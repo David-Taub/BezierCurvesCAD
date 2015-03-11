@@ -1,116 +1,150 @@
-function Bezier(canvas1id, canvas2id, scale, ptX, ptY){
+function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
 
-var canvas, canvas2, ctx, ctx2, w,h,h1, d,d2,  dragId = -1;
-var n = ptX.length, n1 = n+1;
-var iColor = ["#f00000","#00f000","#0000f0","#00f0f0","#f0f000","#f000f0","#090909"];
-var Px = new Float64Array(ptX),
-    Py = new Float64Array(ptY);
-   canvas = document.getElementById(canvas1id);
-   ctx = canvas.getContext("2d");
-   canvas2 = document.getElementById(canvas2id);
-   ctx2 = canvas2.getContext("2d");
-   canvas.addEventListener('mousemove', drag, false);
-   canvas.addEventListener('touchmove', drag, false);
-   canvas.addEventListener('mousedown', start_drag, false);
-   canvas.addEventListener('mouseup', stop_drag, false);
-   canvas.addEventListener('touchstart', start_drag, false);
-   canvas.addEventListener('touchend', stop_drag, false);
-   window.addEventListener('resize', resize, false);
-   resize();
+  var curveCanvas, polynomialsCanvas, curveCtx, polynomialsCtx, width,h,h1, d,d2,  dragId = -1;
+  var n = ptX.length, n1 = n+1;
+  var iColor = ["#f00000","#00f000","#0000f0","#00f0f0","#f0f000","#f000f0","#090909"];
+  var pointsX = new Float64Array(ptX),
+      pointsY = new Float64Array(ptY);
+  curveCanvas = document.getElementById(curveCanvasId);
+  curveCtx = curveCanvas.getContext("2d");
+  polynomialsCanvas = document.getElementById(polynomialsCanvasId);
+  polynomialsCtx = polynomialsCanvas.getContext("2d");
+  curveCanvas.addEventListener('mousemove', drag, false);
+  curveCanvas.addEventListener('touchmove', drag, false);
+  curveCanvas.addEventListener('mousedown', start_drag, false);
+  curveCanvas.addEventListener('mouseup', stop_drag, false);
+  curveCanvas.addEventListener('touchstart', start_drag, false);
+  curveCanvas.addEventListener('touchend', stop_drag, false);
+  window.addEventListener('resize', resize, false);
+  resize();
 
-function drawFun(){
-  var step = d2/(w - d2), t = step;
-  var B = new Float64Array(n1);
-  var Bo = new Float64Array(n1);
-  var Bold = new Float64Array(n1);
-  B[1] = Bo[1] = h1;
-  ctx2.clearRect(0,0, w, h);
-  ctx2.lineWidth = d;
-  for (var k = d2; k < w; k += d2){
-   Bold.set(B);
-   B.set(Bo);
-   for (var j = 1; j < n; j++){
-    for (var i = j+1; i > 0; i--)
-     B[i] = (1-t)*B[i] + t*B[i-1];
-   }
-   for (var m = 1; m < n1; m++){
-    ctx2.strokeStyle = iColor[(m-1) % 7];
-    ctx2.beginPath();  ctx2.moveTo(k-d2, h1-Bold[m]);  ctx2.lineTo(k, h1-B[m]);
-    ctx2.stroke();
-   }
-   t += step;
+  function drawBernsteinPolynomial()
+  {
+    var step = doublePlotWidth / (width - doublePlotWidth), t = step;
+    var B = new Float64Array(n1);
+    var Bo = new Float64Array(n1);
+    var Bold = new Float64Array(n1);
+    B[1] = Bo[1] = height1;
+    polynomialsCtx.clearRect(0,0, width, height);
+    polynomialsCtx.lineWidth = plotWidth;
+    for (var k = doublePlotWidth; k < width; k += doublePlotWidth){
+     Bold.set(B);
+     B.set(Bo);
+     for (var j = 1; j < n; j++){
+      for (var i = j+1; i > 0; i--)
+       B[i] = (1-t)*B[i] + t*B[i-1];
+     }
+     for (var m = 1; m < n1; m++){
+      polynomialsCtx.strokeStyle = iColor[(m-1) % 7];
+      polynomialsCtx.beginPath();  polynomialsCtx.moveTo(k-d2, height1-Bold[m]);  polynomialsCtx.lineTo(k, height1-B[m]);
+      polynomialsCtx.stroke();
+     }
+     t += step;
+    }
   }
-}
-function drawSpline(){
-  var step = 1/w, t = step;
-  var Pxi = new Float64Array(n), Pyi = new Float64Array(n);
-  var scPx = new Float64Array(n), scPy = new Float64Array(n);
-  var X,Y;
-  ctx.clearRect(0,0, w, h);
-  ctx.lineWidth = d;
-  ctx.strokeStyle = "#0000f0";
-  for (var i = 0; i < n; i++){
-   X = scPx[i] = Px[i]*w;
-   Y = scPy[i] = Py[i]*h;
-   ctx.strokeRect(X - d, h1 - Y - d, d2,d2);
+
+  function drawCurve()
+  {
+    var step = 1 / width, t = step;
+    var pointsXi = new Float64Array(n), pointsYi = new Float64Array(n);
+    var scpointsX = new Float64Array(n), scpointsY = new Float64Array(n);
+    var X,Y;
+    curveCtx.clearRect(0,0, width, height);
+    curveCtx.lineWidth = plotWidth;
+    curveCtx.strokeStyle = "#0000f0";
+    for (var i = 0; i < n; i++)
+    {
+      X = scpointsX[i] = pointsX[i] * width;
+      Y = scpointsY[i] = pointsY[i] * height;
+      curveCtx.strokeRect(X - plotWidth, height1 - Y - plotWidth, doublePlotWidth, doublePlotWidth);
+    }
+    if ( n > 2 ){
+      curveCtx.beginPath();  curveCtx.moveTo(scpointsX[0], height1 - scpointsY[0]);
+      for (var i = 1; i < n; i++)
+      {
+        curveCtx.lineTo(scpointsX[i], height1 - scpointsY[i]);
+      }
+      curveCtx.stroke();
+    }
+    curveCtx.lineWidth = doublePlotWidth;
+    curveCtx.strokeStyle = "#f00000";
+    curveCtx.beginPath();  curveCtx.moveTo(scpointsX[0], height1 - scpointsY[0]);
+    for (var k = 1; k < width; k++)
+    {
+      pointsXi.set(scpointsX);
+      pointsYi.set(scpointsY);
+      for (var j = n - 1; j > 0; j--)
+      {
+        for (var i = 0; i < j; i++)
+        {
+          pointsXi[i] = (1-t)*pointsXi[i] + t*pointsXi[i+1];
+          pointsYi[i] = (1-t)*pointsYi[i] + t*pointsYi[i+1];
+
+        }
+      }
+      curveCtx.lineTo(pointsXi[0], height1 - pointsYi[0]);
+      t += step;
+    }
+    curveCtx.stroke();
   }
-  if ( n > 2 ){
-   ctx.beginPath();  ctx.moveTo(scPx[0], h1 - scPy[0]);
-   for (var i = 1; i < n; i++)
-    ctx.lineTo(scPx[i], h1 - scPy[i]);
-   ctx.stroke();
+
+  function resize()
+  {
+     height = width = Math.round(window.innerWidth * scale);
+     height1 = height-1;
+     plotWidth = Math.max(1, Math.round(width / 250));
+     doublePlotWidth = 2 * plotWidth;
+     curveCanvas.width = width;
+     curveCanvas.height = height;
+     polynomialsCanvas.width = width;
+     polynomialsCanvas.height = height;
+     drawBernsteinPolynomial();
+     drawCurve();
   }
-  ctx.lineWidth = d2;
-  ctx.strokeStyle = "#f00000";
-  ctx.beginPath();  ctx.moveTo(scPx[0], h1 - scPy[0]);
-  for (var k = 1; k < w; k++){
-   Pxi.set(scPx);
-   Pyi.set(scPy);
-   for (var j = n - 1; j > 0; j--)
-    for (var i = 0; i < j; i++){
-     Pxi[i] = (1-t)*Pxi[i] + t*Pxi[i+1];
-     Pyi[i] = (1-t)*Pyi[i] + t*Pyi[i+1];}
-   ctx.lineTo(Pxi[0], h1 - Pyi[0]);
-   t += step;
+  function drag(ev)
+  {
+    //No point is chosen
+    if (dragId < 0) return;
+    var destCoordinates = getXY(ev);
+    pointsX[dragId] = destCoordinates[0];
+    pointsY[dragId] = destCoordinates[1];
+    drawCurve();
+    ev.preventDefault();
   }
-  ctx.stroke();
-}
-function resize(){
-   h = w = Math.round(window.innerWidth * scale);
-   h1 = h-1;
-   d = Math.max(1, Math.round(w / 250));  d2 = d+d;
-   canvas.width = w;  canvas.height = h;
-   canvas2.width = w; canvas2.height = h;
-   drawFun();
-   drawSpline();
-}
-function drag(ev){
-  if (dragId < 0) return;
-  var c = getXY(ev);
-  Px[dragId] = c[0];  Py[dragId] = c[1];
-  drawSpline();
-  ev.preventDefault();
-}
-function start_drag(ev){
-  var c = getXY(ev);
-  var Rmin = 2, r2,xi,yi;
-  for (var i = 0; i < n; i++){
-   xi = (c[0] - Px[i]); yi = (c[1] - Py[i]);
-   r2 = xi*xi + yi*yi;
-   if ( r2 < Rmin ){ dragId = i; Rmin = r2;}}
-  Px[dragId] = c[0];  Py[dragId] = c[1];
-  drawSpline();
-  ev.preventDefault();
-}
-function stop_drag(ev){
-  dragId = -1;
-  ev.preventDefault();
-}
-function getXY(ev){
-  if (!ev.clientX) ev = ev.touches[0];
-  var rect = canvas.getBoundingClientRect();
-  var x = (ev.clientX - rect.left) / w,
-      y = (h1 - (ev.clientY - rect.top)) / h;
-  return [x, y];
-}
+
+  function start_drag(ev)
+  {
+    var clickCoordinates = getXY(ev);
+    var minimumDistance = width, distanceSquare, xDelta, yDelta;
+    //Get closest point to the click
+    for (var i = 0; i < n; i++)
+    {
+      xDelta = (clickCoordinates[0] - pointsX[i]);
+      yDelta = (clickCoordinates[1] - pointsY[i]);
+      distanceSquare = xDelta * xDelta + yDelta * yDelta;
+      if ( distanceSquare < minimumDistance )
+      {
+        dragId = i;
+        minimumDistance = distanceSquare;
+      }
+    }
+    pointsX[dragId] = clickCoordinates[0];  pointsY[dragId] = clickCoordinates[1];
+    drawCurve();
+    ev.preventDefault();
+  }
+
+  function stop_drag(ev)
+  {
+    dragId = -1;
+    ev.preventDefault();
+  }
+
+  function getXY(ev)
+  {
+    if (!ev.clientX) ev = ev.touches[0];
+    var rect = curveCanvas.getBoundingClientRect();
+    var x = (ev.clientX - rect.left) / width,
+        y = (h1 - (ev.clientY - rect.top)) / height;
+    return [x, y];
+  }
 } // end Bezier
