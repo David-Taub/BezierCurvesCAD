@@ -27,19 +27,26 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
     B[1] = Bo[1] = height1;
     polynomialsCtx.clearRect(0,0, width, height);
     polynomialsCtx.lineWidth = plotWidth;
-    for (var k = doublePlotWidth; k < width; k += doublePlotWidth){
-     Bold.set(B);
-     B.set(Bo);
-     for (var j = 1; j < n; j++){
-      for (var i = j+1; i > 0; i--)
-       B[i] = (1-t)*B[i] + t*B[i-1];
-     }
-     for (var m = 1; m < n1; m++){
-      polynomialsCtx.strokeStyle = iColor[(m-1) % 7];
-      polynomialsCtx.beginPath();  polynomialsCtx.moveTo(k-d2, height1-Bold[m]);  polynomialsCtx.lineTo(k, height1-B[m]);
-      polynomialsCtx.stroke();
-     }
-     t += step;
+    for (var k = doublePlotWidth; k < width; k += doublePlotWidth)
+    {
+      Bold.set(B);
+      B.set(Bo);
+      for (var j = 1; j < n; j++)
+      {
+        for (var i = j+1; i > 0; i--)
+        {
+          B[i] = (1-t)*B[i] + t*B[i-1];
+        }
+      }
+      for (var m = 1; m < n1; m++)
+      {
+        polynomialsCtx.strokeStyle = iColor[(m-1) % 7];
+        polynomialsCtx.beginPath();
+        polynomialsCtx.moveTo(k - doublePlotWidth, height1-Bold[m]);
+        polynomialsCtx.lineTo(k, height1-B[m]);
+        polynomialsCtx.stroke();
+      }
+      t += step;
     }
   }
 
