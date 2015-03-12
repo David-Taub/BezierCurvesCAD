@@ -1,5 +1,5 @@
 function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
-
+  var timer, deCastlejauRatio;
   var curveCanvas, polynomialsCanvas, curveCtx, polynomialsCtx, width, height, height1, plotWidth, doublePlotWidth,  dragId = -1;
   var isNewPointMode = false;
   var numberOfPoints = ptX.length;
@@ -27,17 +27,43 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
     {
       isNewPointMode = true;
     }
+
   }
   function onKeyUp(ev)
   {
     //TODO: ugly, refactor
+    //CTRL
     if (17 == ev.keyCode)
     {
       isNewPointMode = false;
     }
+    //DELETE
     if (46 == ev.keyCode)
     {
       deletePoint();
+    }
+    //C
+    if (67 == ev.keyCode)
+    {
+      drawDeCastlejau();
+    }
+    console.log(ev.keyCode);
+  }
+
+  function drawDeCastlejau()
+  {
+    deCastlejauRatio = 0;
+    timer = window.setInterval(stepDeCastlejau, 5);
+  }
+
+  function stepDeCastlejau()
+  {
+    deCastlejauRatio += 0.001;
+    drawCurve(deCastlejauRatio);
+    //Stop
+    if(deCastlejauRatio >= 1)
+    {
+      clearInterval(timer);
     }
   }
 
@@ -99,7 +125,26 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
     }
   }
 
-  function drawCurve()
+  function drawPolygon(polygonPointsX, polygonPointsY, sizeOfPolygon, lineWidth, lineColor, dotColor)
+  {
+      curveCtx.lineWidth = lineWidth;
+      curveCtx.beginPath();
+      curveCtx.moveTo(polygonPointsX[0], height1 - polygonPointsY[0]);
+      for (var i = 0; i < sizeOfPolygon; i++)
+      {
+        curveCtx.strokeStyle = dotColor;
+        curveCtx.strokeRect(polygonPointsX[i] - plotWidth,
+                            height1 - polygonPointsY[i] - plotWidth,
+                            doublePlotWidth,
+                            doublePlotWidth);
+        curveCtx.stroke();
+        curveCtx.strokeStyle = lineColor;
+        curveCtx.lineTo(polygonPointsX[i], height1 - polygonPointsY[i]);
+        curveCtx.stroke();
+      }
+  }
+
+  function drawCurve(ratioToPlot)
   {
     var step = 1 / width, t = step;
     var skeletonPointsX = new Float64Array(numberOfPoints), skeletonPointsY = new Float64Array(numberOfPoints);
@@ -115,27 +160,14 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
     {
       X = canvasSpacePointsX[i] = pointsX[i] * width;
       Y = canvasSpacePointsY[i] = pointsY[i] * height1;
-      curveCtx.strokeRect(X - plotWidth, height1 - Y - plotWidth, doublePlotWidth, doublePlotWidth);
     }
 
     //plot control polygon lines
-    if ( numberOfPoints > 2 )
-    {
-      curveCtx.beginPath();  curveCtx.moveTo(canvasSpacePointsX[0], height1 - canvasSpacePointsY[0]);
-      for (var i = 1; i < numberOfPoints; i++)
-      {
-        curveCtx.lineTo(canvasSpacePointsX[i], height1 - canvasSpacePointsY[i]);
-      }
-      curveCtx.stroke();
-    }
-
+    drawPolygon(canvasSpacePointsX, canvasSpacePointsY, numberOfPoints,"#0000f5", "#0000f0");
     //plot curve
     curveCtx.lineWidth = doublePlotWidth;
     //TODO: magic
-    curveCtx.strokeStyle = "#f00000";
-    curveCtx.beginPath();
-    curveCtx.moveTo(canvasSpacePointsX[0], height1 - canvasSpacePointsY[0]);
-
+    var lastStepX = canvasSpacePointsX[0], lastStepY = height1 - canvasSpacePointsY[0];
     for (var k = 1; k < width; k++)
     {
       //De Castlejau algorithm
@@ -150,11 +182,22 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
           skeletonPointsX[i] = (1 - t) * skeletonPointsX[i] + t * skeletonPointsX[i + 1];
           skeletonPointsY[i] = (1 - t) * skeletonPointsY[i] + t * skeletonPointsY[i + 1];
         }
+        //On last step
+        if(k == Math.floor(width * ratioToPlot) && ratioToPlot < 1)
+        {
+          drawPolygon(skeletonPointsX, skeletonPointsY, j, plotWidth, "#00f000", "#0f0f0f");
+        }
       }
+      //Draw Curve step
+      curveCtx.strokeStyle = "#f00000";
+      curveCtx.beginPath();
+      curveCtx.moveTo(lastStepX, lastStepY);
       curveCtx.lineTo(skeletonPointsX[0], height1 - skeletonPointsY[0]);
+      curveCtx.stroke();
+      lastStepX = skeletonPointsX[0];
+      lastStepY = height1 - skeletonPointsY[0];
       t += step;
     }
-    curveCtx.stroke();
   }
 
   function resize()
@@ -168,7 +211,7 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
      polynomialsCanvas.width = width;
      polynomialsCanvas.height = height;
      drawBernsteinPolynomial();
-     drawCurve();
+     drawCurve(1);
   }
   function drag(ev)
   {
@@ -177,7 +220,7 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
     var destCoordinates = getXY(ev);
     pointsX[dragId] = destCoordinates[0];
     pointsY[dragId] = destCoordinates[1];
-    drawCurve();
+    drawCurve(1);
     ev.preventDefault();
   }
 
@@ -204,7 +247,7 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
       }
     }
     pointsX[dragId] = clickCoordinates[0];  pointsY[dragId] = clickCoordinates[1];
-    drawCurve();
+    drawCurve(1);
     ev.preventDefault();
   }
 
