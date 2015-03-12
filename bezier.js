@@ -1,7 +1,8 @@
 function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
 
-  var curveCanvas, polynomialsCanvas, curveCtx, polynomialsCtx, width,h,h1, d,d2,  dragId = -1;
-  var n = ptX.length, n1 = n+1;
+  var curveCanvas, polynomialsCanvas, curveCtx, polynomialsCtx, width, height, height1, plotWidth, doublePlotWidth,  dragId = -1;
+  var isNewPointMode = false;
+  var numberOfPoints = ptX.length;
   var iColor = ["#f00000","#00f000","#0000f0","#00f0f0","#f0f000","#f000f0","#090909"];
   var pointsX = new Float64Array(ptX),
       pointsY = new Float64Array(ptY);
@@ -15,35 +16,68 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
   curveCanvas.addEventListener('mouseup', stop_drag, false);
   curveCanvas.addEventListener('touchstart', start_drag, false);
   curveCanvas.addEventListener('touchend', stop_drag, false);
+  window.addEventListener('keydown', onKeyDown, false);
+  window.addEventListener('keyup', onKeyUp, false);
   window.addEventListener('resize', resize, false);
   resize();
 
+  function onKeyDown(ev)
+  {
+    if (ev.ctrlKey)
+    {
+      isNewPointMode = true;
+    }
+  }
+  function onKeyUp(ev)
+  {
+    isNewPointMode = false;
+  }
+
+  function addPoint(x, y)
+  {
+    numberOfPoints += 1;
+    var newPointsX = new Float64Array(numberOfPoints);
+    var newPointsY = new Float64Array(numberOfPoints);
+    newPointsX.set(pointsX);
+    newPointsY.set(pointsY);
+    newPointsX[pointsX.length] = x;
+    newPointsY[pointsY.length] = y;
+    pointsX = newPointsX;
+    pointsY = newPointsY;
+    resize();
+  }
+
   function drawBernsteinPolynomial()
   {
+    //Setup
     var step = doublePlotWidth / (width - doublePlotWidth), t = step;
-    var B = new Float64Array(n1);
-    var Bo = new Float64Array(n1);
-    var Bold = new Float64Array(n1);
-    B[1] = Bo[1] = height1;
+    var lastStepValues = new Float64Array(numberOfPoints + 1);
+    var currentStepValues = new Float64Array(numberOfPoints + 1);
+    currentStepValues[1] = height1;
     polynomialsCtx.clearRect(0,0, width, height);
     polynomialsCtx.lineWidth = plotWidth;
+    //Each pixel on the X axis
     for (var k = doublePlotWidth; k < width; k += doublePlotWidth)
     {
-      Bold.set(B);
-      B.set(Bo);
-      for (var j = 1; j < n; j++)
+      lastStepValues.set(currentStepValues);
+      //Clean current step
+      currentStepValues = new Float64Array(numberOfPoints + 1);
+      currentStepValues[1] = height1;
+      //Calc current pixel location - Bernstein polynomials
+      for (var j = 1; j < numberOfPoints; j++)
       {
         for (var i = j+1; i > 0; i--)
         {
-          B[i] = (1-t)*B[i] + t*B[i-1];
+          currentStepValues[i] = (1-t) * currentStepValues[i] + t * currentStepValues[i-1];
         }
       }
-      for (var m = 1; m < n1; m++)
+      //Plot
+      for (var poliynomialId = 1; poliynomialId < numberOfPoints + 1; poliynomialId++)
       {
-        polynomialsCtx.strokeStyle = iColor[(m-1) % 7];
+        polynomialsCtx.strokeStyle = iColor[(poliynomialId - 1) % 7];
         polynomialsCtx.beginPath();
-        polynomialsCtx.moveTo(k - doublePlotWidth, height1-Bold[m]);
-        polynomialsCtx.lineTo(k, height1-B[m]);
+        polynomialsCtx.moveTo(k - doublePlotWidth, height1 - lastStepValues[poliynomialId]);
+        polynomialsCtx.lineTo(k, height1 - currentStepValues[poliynomialId]);
         polynomialsCtx.stroke();
       }
       t += step;
@@ -53,43 +87,56 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
   function drawCurve()
   {
     var step = 1 / width, t = step;
-    var pointsXi = new Float64Array(n), pointsYi = new Float64Array(n);
-    var scpointsX = new Float64Array(n), scpointsY = new Float64Array(n);
+    var skeletonPointsX = new Float64Array(numberOfPoints), skeletonPointsY = new Float64Array(numberOfPoints);
+    var canvasSpacePointsX = new Float64Array(numberOfPoints), canvasSpacePointsY = new Float64Array(numberOfPoints);
     var X,Y;
     curveCtx.clearRect(0,0, width, height);
     curveCtx.lineWidth = plotWidth;
+    //TODO: Magic
     curveCtx.strokeStyle = "#0000f0";
-    for (var i = 0; i < n; i++)
+
+    //Set x,y in canvas coordinates, plot control points
+    for (var i = 0; i < numberOfPoints; i++)
     {
-      X = scpointsX[i] = pointsX[i] * width;
-      Y = scpointsY[i] = pointsY[i] * height;
+      X = canvasSpacePointsX[i] = pointsX[i] * width;
+      Y = canvasSpacePointsY[i] = pointsY[i] * height1;
       curveCtx.strokeRect(X - plotWidth, height1 - Y - plotWidth, doublePlotWidth, doublePlotWidth);
     }
-    if ( n > 2 ){
-      curveCtx.beginPath();  curveCtx.moveTo(scpointsX[0], height1 - scpointsY[0]);
-      for (var i = 1; i < n; i++)
+
+    //plot control polygon lines
+    if ( numberOfPoints > 2 )
+    {
+      curveCtx.beginPath();  curveCtx.moveTo(canvasSpacePointsX[0], height1 - canvasSpacePointsY[0]);
+      for (var i = 1; i < numberOfPoints; i++)
       {
-        curveCtx.lineTo(scpointsX[i], height1 - scpointsY[i]);
+        curveCtx.lineTo(canvasSpacePointsX[i], height1 - canvasSpacePointsY[i]);
       }
       curveCtx.stroke();
     }
+
+    //plot curve
     curveCtx.lineWidth = doublePlotWidth;
+    //TODO: magic
     curveCtx.strokeStyle = "#f00000";
-    curveCtx.beginPath();  curveCtx.moveTo(scpointsX[0], height1 - scpointsY[0]);
+    curveCtx.beginPath();
+    curveCtx.moveTo(canvasSpacePointsX[0], height1 - canvasSpacePointsY[0]);
+
     for (var k = 1; k < width; k++)
     {
-      pointsXi.set(scpointsX);
-      pointsYi.set(scpointsY);
-      for (var j = n - 1; j > 0; j--)
+      //De Castlejau algorithm
+      skeletonPointsX.set(canvasSpacePointsX);
+      skeletonPointsY.set(canvasSpacePointsY);
+      //De Castlejau iterations
+      for (var j = numberOfPoints - 1; j > 0; j--)
       {
+        //Skeleton points in current iteration
         for (var i = 0; i < j; i++)
         {
-          pointsXi[i] = (1-t)*pointsXi[i] + t*pointsXi[i+1];
-          pointsYi[i] = (1-t)*pointsYi[i] + t*pointsYi[i+1];
-
+          skeletonPointsX[i] = (1 - t) * skeletonPointsX[i] + t * skeletonPointsX[i + 1];
+          skeletonPointsY[i] = (1 - t) * skeletonPointsY[i] + t * skeletonPointsY[i + 1];
         }
       }
-      curveCtx.lineTo(pointsXi[0], height1 - pointsYi[0]);
+      curveCtx.lineTo(skeletonPointsX[0], height1 - skeletonPointsY[0]);
       t += step;
     }
     curveCtx.stroke();
@@ -122,9 +169,15 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
   function start_drag(ev)
   {
     var clickCoordinates = getXY(ev);
+    if (isNewPointMode)
+    {
+      addPoint(clickCoordinates[0], clickCoordinates[1]);
+      return;
+    }
+
     var minimumDistance = width, distanceSquare, xDelta, yDelta;
     //Get closest point to the click
-    for (var i = 0; i < n; i++)
+    for (var i = 0; i < numberOfPoints; i++)
     {
       xDelta = (clickCoordinates[0] - pointsX[i]);
       yDelta = (clickCoordinates[1] - pointsY[i]);
@@ -148,10 +201,13 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
 
   function getXY(ev)
   {
-    if (!ev.clientX) ev = ev.touches[0];
+    if (!ev.clientX)
+    {
+      ev = ev.touches[0];
+    }
     var rect = curveCanvas.getBoundingClientRect();
     var x = (ev.clientX - rect.left) / width,
-        y = (h1 - (ev.clientY - rect.top)) / height;
+        y = (height1 - (ev.clientY - rect.top)) / height;
     return [x, y];
   }
 } // end Bezier
