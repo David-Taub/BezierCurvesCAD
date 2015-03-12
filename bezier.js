@@ -30,7 +30,15 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
   }
   function onKeyUp(ev)
   {
-    isNewPointMode = false;
+    //TODO: ugly, refactor
+    if (17 == ev.keyCode)
+    {
+      isNewPointMode = false;
+    }
+    if (46 == ev.keyCode)
+    {
+      deletePoint();
+    }
   }
 
   function addPoint(x, y)
@@ -38,15 +46,22 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
     numberOfPoints += 1;
     var newPointsX = new Float64Array(numberOfPoints);
     var newPointsY = new Float64Array(numberOfPoints);
-    newPointsX.set(pointsX);
-    newPointsY.set(pointsY);
-    newPointsX[pointsX.length] = x;
-    newPointsY[pointsY.length] = y;
+    for (var i = 0; i < numberOfPoints; i += 1)
+    {
+      newPointsX[i] = pointsX[i];
+      newPointsY[i] = pointsY[i];
+    }
+    newPointsX[numberOfPoints - 1] = x;
+    newPointsY[numberOfPoints - 1] = y;
     pointsX = newPointsX;
     pointsY = newPointsY;
     resize();
   }
-
+  function deletePoint()
+  {
+    numberOfPoints -= 1;
+    resize();
+  }
   function drawBernsteinPolynomial()
   {
     //Setup
