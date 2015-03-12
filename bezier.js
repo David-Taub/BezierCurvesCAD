@@ -1,5 +1,5 @@
 function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
-  var timer, deCastlejauRatio;
+  var timer, deCasteljauRatio;
   var curveCanvas, polynomialsCanvas, curveCtx, polynomialsCtx, width, height, height1, plotWidth, doublePlotWidth,  dragId = -1;
   var isNewPointMode = false;
   var numberOfPoints = ptX.length;
@@ -32,46 +32,48 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
   function onKeyUp(ev)
   {
     //TODO: ugly, refactor
-    //CTRL
-    if (17 == ev.keyCode)
+    switch(ev.keyCode)
     {
-      isNewPointMode = false;
+      //CTRL
+      case 17:
+        isNewPointMode = false;
+        break;
+      //DELETE
+      case 46:
+        deletePoint();
+        break;
+      //C
+      case 67:
+        drawDeCasteljau();
+        break;
     }
-    //DELETE
-    if (46 == ev.keyCode)
-    {
-      deletePoint();
-    }
-    //C
-    if (67 == ev.keyCode)
-    {
-      drawDeCastlejau();
-    }
-    console.log(ev.keyCode);
   }
 
-  function drawDeCastlejau()
+  function drawDeCasteljau()
   {
-    deCastlejauRatio = 0;
-    timer = window.setInterval(stepDeCastlejau, 5);
+    deCasteljauRatio = 0;
+    timer = window.setInterval(stepDeCasteljau, 40);
   }
 
-  function stepDeCastlejau()
+  function stepDeCasteljau()
   {
-    deCastlejauRatio += 0.001;
-    drawCurve(deCastlejauRatio);
+    deCasteljauRatio += 0.005;
+    drawCurve(deCasteljauRatio);
     //Stop
-    if(deCastlejauRatio >= 1)
+    if(deCasteljauRatio >= 1)
     {
       clearInterval(timer);
     }
   }
 
+  //Add point as last in polygon, coordinates are between 0 to 1
+  //e.g. addPoint(0.3, 0.5)
   function addPoint(x, y)
   {
     numberOfPoints += 1;
     var newPointsX = new Float64Array(numberOfPoints);
     var newPointsY = new Float64Array(numberOfPoints);
+    //copy old array to new
     for (var i = 0; i < numberOfPoints; i += 1)
     {
       newPointsX[i] = pointsX[i];
@@ -83,11 +85,14 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
     pointsY = newPointsY;
     resize();
   }
+  //Delete last point in polygon
   function deletePoint()
   {
     numberOfPoints -= 1;
     resize();
   }
+
+
   function drawBernsteinPolynomial()
   {
     //Setup
@@ -125,6 +130,7 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
     }
   }
 
+  //Draw lines and dots (polygon is open, last and first dots are not drawn)
   function drawPolygon(polygonPointsX, polygonPointsY, sizeOfPolygon, lineWidth, lineColor, dotColor)
   {
       curveCtx.lineWidth = lineWidth;
@@ -146,58 +152,67 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
 
   function drawCurve(ratioToPlot)
   {
-    var step = 1 / width, t = step;
+    var step = 1 / width;
     var skeletonPointsX = new Float64Array(numberOfPoints), skeletonPointsY = new Float64Array(numberOfPoints);
     var canvasSpacePointsX = new Float64Array(numberOfPoints), canvasSpacePointsY = new Float64Array(numberOfPoints);
-    var X,Y;
     curveCtx.clearRect(0,0, width, height);
-    curveCtx.lineWidth = plotWidth;
-    //TODO: Magic
-    curveCtx.strokeStyle = "#0000f0";
 
     //Set x,y in canvas coordinates, plot control points
     for (var i = 0; i < numberOfPoints; i++)
     {
-      X = canvasSpacePointsX[i] = pointsX[i] * width;
-      Y = canvasSpacePointsY[i] = pointsY[i] * height1;
+      canvasSpacePointsX[i] = pointsX[i] * width;
+      canvasSpacePointsY[i] = pointsY[i] * height1;
     }
 
     //plot control polygon lines
+    curveCtx.lineWidth = plotWidth;
     drawPolygon(canvasSpacePointsX, canvasSpacePointsY, numberOfPoints,"#0000f5", "#0000f0");
+
     //plot curve
     curveCtx.lineWidth = doublePlotWidth;
-    //TODO: magic
     var lastStepX = canvasSpacePointsX[0], lastStepY = height1 - canvasSpacePointsY[0];
-    for (var k = 1; k < width; k++)
+    //Draw Curve step
+    for (var t = step; t < 1; t += step)
     {
-      //De Castlejau algorithm
-      skeletonPointsX.set(canvasSpacePointsX);
-      skeletonPointsY.set(canvasSpacePointsY);
-      //De Castlejau iterations
-      for (var j = numberOfPoints - 1; j > 0; j--)
-      {
-        //Skeleton points in current iteration
-        for (var i = 0; i < j; i++)
-        {
-          skeletonPointsX[i] = (1 - t) * skeletonPointsX[i] + t * skeletonPointsX[i + 1];
-          skeletonPointsY[i] = (1 - t) * skeletonPointsY[i] + t * skeletonPointsY[i + 1];
-        }
-        //On last step
-        if(k == Math.floor(width * ratioToPlot) && ratioToPlot < 1)
-        {
-          drawPolygon(skeletonPointsX, skeletonPointsY, j, plotWidth, "#00f000", "#0f0f0f");
-        }
-      }
-      //Draw Curve step
+      curveStep = deCasteljau(canvasSpacePointsX, canvasSpacePointsY, t, false);
       curveCtx.strokeStyle = "#f00000";
       curveCtx.beginPath();
       curveCtx.moveTo(lastStepX, lastStepY);
-      curveCtx.lineTo(skeletonPointsX[0], height1 - skeletonPointsY[0]);
+      curveCtx.lineTo(curveStep[0], height1 - curveStep[1]);
       curveCtx.stroke();
-      lastStepX = skeletonPointsX[0];
-      lastStepY = height1 - skeletonPointsY[0];
-      t += step;
+      lastStepX = curveStep[0];
+      lastStepY = height1 - curveStep[1];
     }
+    //Draw skeleton
+    if (ratioToPlot < 1)
+    {
+      deCasteljau(canvasSpacePointsX, canvasSpacePointsY, ratioToPlot, true);
+    }
+  }
+
+  function deCasteljau(canvasSpacePointsX, canvasSpacePointsY, t, shouldDraw)
+  {
+    var skeletonPointsX = new Float64Array(numberOfPoints)
+    var skeletonPointsY = new Float64Array(numberOfPoints);
+    skeletonPointsX.set(canvasSpacePointsX);
+    skeletonPointsY.set(canvasSpacePointsY);
+    for (var j = numberOfPoints - 1; j > 0; j--)
+    {
+      //Skeleton points in current iteration
+      for (var i = 0; i < j; i++)
+      {
+        skeletonPointsX[i] = (1 - t) * skeletonPointsX[i] + t * skeletonPointsX[i + 1];
+        skeletonPointsY[i] = (1 - t) * skeletonPointsY[i] + t * skeletonPointsY[i + 1];
+      }
+      if(shouldDraw)
+      {
+        curveCtx.font="30px Courier New";
+        var roundT=(Math.round(t*100)/100);
+        curveCtx.fillText("t=".concat(roundT), 30, 30);
+        drawPolygon(skeletonPointsX, skeletonPointsY, j, plotWidth, "#00f000", "#0f0f0f");
+      }
+    }
+    return [skeletonPointsX[0], skeletonPointsY[0]];
   }
 
   function resize()
@@ -213,6 +228,7 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
      drawBernsteinPolynomial();
      drawCurve(1);
   }
+
   function drag(ev)
   {
     //No point is chosen
@@ -257,6 +273,7 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
     ev.preventDefault();
   }
 
+  //Get x,y between 0 to 1 of given click event
   function getXY(ev)
   {
     if (!ev.clientX)

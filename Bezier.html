@@ -9,6 +9,17 @@
 <canvas id="c1" width="443" height="443" style="border:1px solid #000000;"></canvas>
 <canvas id="c12" width="443" height="443" style="border:1px solid #000000;"></canvas>
 <script type="text/javascript">
-  var b1 = new Bezier("c1", "c12", .3, [], []);
+  var b1 = new Bezier("c1", "c12", .3, [ .1, .9, .9, .5], [.1, .9, .1, .1]);
 </script>
+<h2>
+<br/>
+Click 					- Move points
+<br/>
+CTRL + click 		- Create new point
+<br/>
+DELETE 					- Delete last point
+<br/>
+C 							- De Casteljau skeleton visualization
+<br/>
+</h2>
 </body></html>
