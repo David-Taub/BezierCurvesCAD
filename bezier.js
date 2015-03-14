@@ -1,9 +1,25 @@
 $( document ).ready(function()
 {
     var b1 = new main( .3, [ .1, .9, .9, .5], [.1, .9, .1, .1]);
+
 });
 
-function main(scale, ptX, ptY){
+function download(filename, text) {
+    var pom = document.createElement('a');
+    pom.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+    pom.setAttribute('download', filename);
+
+    if (document.createEvent) {
+        var event = document.createEvent('MouseEvents');
+        event.initEvent('click', true, true);
+        pom.dispatchEvent(event);
+    }
+    else {
+        pom.click();
+    }
+}
+function main(scale, ptX, ptY)
+{
   var timer, deCasteljauRatio;
   var curveCanvas, polynomialsCanvas, curveCtx, polynomialsCtx, width, height, height1, plotWidth, doublePlotWidth,  dragId = -1;
   var numberOfPoints = ptX.length;
@@ -23,9 +39,11 @@ function main(scale, ptX, ptY){
     $("#bezierCanvas").mousemove(drag);
     $("#bezierCanvas").mousedown(start_drag);
     $("#bezierCanvas").mouseup(stop_drag);
-    $('#slider').on("change mousemove", function() {
-    drawCurve(this.value/this.max)
-});
+    $('#slider').on("change mousemove", function()
+    {
+      deCasteljauRatio = this.value/this.max;
+      drawCurve()
+    });
 
     //Mobile support
 
@@ -35,7 +53,16 @@ function main(scale, ptX, ptY){
     $(document).keyup(onKeyUp);
     $(document).resize(resize);
   }
+  // function saveCurve()
+  // {
+  //   var viewModel = {
+  //   number : ko.observable("Bert"),
+  //   lastName : ko.observable("Smith"),
+  //   pets : ko.observableArray(["Cat", "Dog", "Fish"]),
+  //   type : "Customer"
+  //   };
 
+  // }
   function onKeyUp(ev)
   {
     switch(ev.keyCode)
@@ -60,7 +87,8 @@ function main(scale, ptX, ptY){
   function stepDeCasteljau()
   {
     deCasteljauRatio += 0.001;
-    drawCurve(deCasteljauRatio);
+    $("#slider").val(deCasteljauRatio * $("#slider").prop('max'));
+    drawCurve();
     //Stop
     if(deCasteljauRatio >= 1)
     {
@@ -152,7 +180,7 @@ function main(scale, ptX, ptY){
       }
   }
 
-  function drawCurve(ratioToPlot)
+  function drawCurve()
   {
     var step = 1 / width;
     var skeletonPointsX = new Float64Array(numberOfPoints), skeletonPointsY = new Float64Array(numberOfPoints);
@@ -186,9 +214,9 @@ function main(scale, ptX, ptY){
       lastStepY = height1 - curveStep[1];
     }
     //Draw skeleton
-    if (ratioToPlot < 1)
+    if (deCasteljauRatio < 1)
     {
-      deCasteljau(canvasSpacePointsX, canvasSpacePointsY, ratioToPlot, true);
+      deCasteljau(canvasSpacePointsX, canvasSpacePointsY, deCasteljauRatio, true);
     }
   }
 
@@ -228,7 +256,7 @@ function main(scale, ptX, ptY){
      polynomialsCanvas.width = width;
      polynomialsCanvas.height = height;
      drawBernsteinPolynomial();
-     drawCurve(1);
+     drawCurve();
   }
 
   function drag(ev)
@@ -238,7 +266,7 @@ function main(scale, ptX, ptY){
     var destCoordinates = getXY(ev);
     pointsX[dragId] = destCoordinates[0];
     pointsY[dragId] = destCoordinates[1];
-    drawCurve(1);
+    drawCurve();
     ev.preventDefault();
   }
 
@@ -265,7 +293,7 @@ function main(scale, ptX, ptY){
       }
     }
     pointsX[dragId] = clickCoordinates[0];  pointsY[dragId] = clickCoordinates[1];
-    drawCurve(1);
+    drawCurve();
     ev.preventDefault();
   }
 
