@@ -1,43 +1,45 @@
-function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
+$( document ).ready(function()
+{
+    var b1 = new main( .3, [ .1, .9, .9, .5], [.1, .9, .1, .1]);
+});
+
+function main(scale, ptX, ptY){
   var timer, deCasteljauRatio;
   var curveCanvas, polynomialsCanvas, curveCtx, polynomialsCtx, width, height, height1, plotWidth, doublePlotWidth,  dragId = -1;
-  var isNewPointMode = false;
   var numberOfPoints = ptX.length;
   var iColor = ["#f00000","#00f000","#0000f0","#00f0f0","#f0f000","#f000f0","#090909"];
   var pointsX = new Float64Array(ptX),
       pointsY = new Float64Array(ptY);
-  curveCanvas = document.getElementById(curveCanvasId);
-  curveCtx = curveCanvas.getContext("2d");
-  polynomialsCanvas = document.getElementById(polynomialsCanvasId);
-  polynomialsCtx = polynomialsCanvas.getContext("2d");
-  curveCanvas.addEventListener('mousemove', drag, false);
-  curveCanvas.addEventListener('touchmove', drag, false);
-  curveCanvas.addEventListener('mousedown', start_drag, false);
-  curveCanvas.addEventListener('mouseup', stop_drag, false);
-  curveCanvas.addEventListener('touchstart', start_drag, false);
-  curveCanvas.addEventListener('touchend', stop_drag, false);
-  window.addEventListener('keydown', onKeyDown, false);
-  window.addEventListener('keyup', onKeyUp, false);
-  window.addEventListener('resize', resize, false);
+  init();
   resize();
 
-  function onKeyDown(ev)
+  function init()
   {
-    if (ev.ctrlKey)
-    {
-      isNewPointMode = true;
-    }
+    curveCanvas = $("#bezierCanvas").get(0);
+    curveCtx = curveCanvas.getContext("2d");
+    polynomialsCanvas = $("#bernsteinCanvas").get(0);
+    polynomialsCtx = polynomialsCanvas.getContext("2d");
 
+    $("#bezierCanvas").mousemove(drag);
+    $("#bezierCanvas").mousedown(start_drag);
+    $("#bezierCanvas").mouseup(stop_drag);
+    $('#slider').on("change mousemove", function() {
+    drawCurve(this.value/this.max)
+});
+
+    //Mobile support
+
+    $("#bezierCanvas").bind('touchmove', drag);
+    $("#bezierCanvas").bind('touchstart', start_drag);
+    $("#bezierCanvas").bind('touchend', stop_drag);
+    $(document).keyup(onKeyUp);
+    $(document).resize(resize);
   }
+
   function onKeyUp(ev)
   {
-    //TODO: ugly, refactor
     switch(ev.keyCode)
     {
-      //CTRL
-      case 17:
-        isNewPointMode = false;
-        break;
       //DELETE
       case 46:
         deletePoint();
@@ -52,12 +54,12 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
   function drawDeCasteljau()
   {
     deCasteljauRatio = 0;
-    timer = window.setInterval(stepDeCasteljau, 40);
+    timer = window.setInterval(stepDeCasteljau, 5);
   }
 
   function stepDeCasteljau()
   {
-    deCasteljauRatio += 0.005;
+    deCasteljauRatio += 0.001;
     drawCurve(deCasteljauRatio);
     //Stop
     if(deCasteljauRatio >= 1)
@@ -85,13 +87,13 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
     pointsY = newPointsY;
     resize();
   }
+
   //Delete last point in polygon
   function deletePoint()
   {
     numberOfPoints -= 1;
     resize();
   }
-
 
   function drawBernsteinPolynomial()
   {
@@ -243,7 +245,7 @@ function Bezier(curveCanvasId, polynomialsCanvasId, scale, ptX, ptY){
   function start_drag(ev)
   {
     var clickCoordinates = getXY(ev);
-    if (isNewPointMode)
+    if (ev.ctrlKey)
     {
       addPoint(clickCoordinates[0], clickCoordinates[1]);
       return;
