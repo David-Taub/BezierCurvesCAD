@@ -4,20 +4,7 @@ $( document ).ready(function()
 
 });
 
-function download(filename, text) {
-    var pom = document.createElement('a');
-    pom.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-    pom.setAttribute('download', filename);
 
-    if (document.createEvent) {
-        var event = document.createEvent('MouseEvents');
-        event.initEvent('click', true, true);
-        pom.dispatchEvent(event);
-    }
-    else {
-        pom.click();
-    }
-}
 function main(scale, ptX, ptY)
 {
   var currentCurveId = 0;
@@ -38,11 +25,14 @@ function main(scale, ptX, ptY)
       endT : .5
     };
     curves = [curve];
+    updateCurvesList();
     curveCanvas = $("#bezierCanvas").get(0);
     curveCtx = curveCanvas.getContext("2d");
     polynomialsCanvas = $("#bernsteinCanvas").get(0);
     polynomialsCtx = polynomialsCanvas.getContext("2d");
-
+    $("#fileInput").change(loadCurves);
+    $("#downloadButton").click(saveCurves);
+    $("#curvesList").change(changeCurrentCurve);
     $("#bezierCanvas").mousemove(drag);
     $("#bezierCanvas").mousedown(startDrag);
     $("#bezierCanvas").mouseup(stopDrag);
@@ -60,16 +50,68 @@ function main(scale, ptX, ptY)
     $(document).keyup(onKeyUp);
     $(document).resize(resize);
   }
-  // function saveCurve()
-  // {
-  //   var viewModel = {
-  //   number : ko.observable("Bert"),
-  //   lastName : ko.observable("Smith"),
-  //   pets : ko.observableArray(["Cat", "Dog", "Fish"]),
-  //   type : "Customer"
-  //   };
 
-  // }
+  function updateCurvesList()
+  {
+    $('#curvesList').empty();
+    for (var i=1; i <= curves.length; i++)
+    {
+      if (i==1)
+      {
+        $("#curvesList").append($("<option selected/>").text(i));
+      }
+      else
+      {
+        $("#curvesList").append($("<option />").text(i));
+      }
+
+    }
+  }
+
+  function changeCurrentCurve()
+  {
+    currentCurveId = $("#curvesList")[0].selectedIndex;
+    resize();
+  }
+
+  function loadCurves(ev) {
+    var file = $("#fileInput")[0].files[0]; // FileList object
+    var reader = new FileReader();
+
+    // Closure to capture the file information.
+    reader.onload = function(e)
+    {
+      curves = JSON.parse(reader.result);
+      updateCurvesList()
+      resize();
+    }
+
+    // Read in the image file as a data URL.
+    reader.readAsText(file);
+  }
+
+
+
+  function saveCurves()
+  {
+    download("curve.json", JSON.stringify(curves));
+  }
+
+  function download(filename, text) {
+      var pom = document.createElement('a');
+      pom.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+      pom.setAttribute('download', filename);
+
+      if (document.createEvent) {
+          var event = document.createEvent('MouseEvents');
+          event.initEvent('click', true, true);
+          pom.dispatchEvent(event);
+      }
+      else {
+          pom.click();
+      }
+  }
+
   function onKeyUp(ev)
   {
     switch(ev.keyCode)
@@ -108,16 +150,16 @@ function main(scale, ptX, ptY)
   function addPoint(x, y)
   {
     curves[currentCurveId].numberOfPoints += 1;
-    var newPointsX = new Float64Array(numberOfPoints);
-    var newPointsY = new Float64Array(numberOfPoints);
+    var newPointsX = new Float64Array(curves[currentCurveId].numberOfPoints);
+    var newPointsY = new Float64Array(curves[currentCurveId].numberOfPoints);
     //copy old array to new
     for (var i = 0; i < curves[currentCurveId].numberOfPoints; i += 1)
     {
-      newPointsX[i] = pointsX[i];
-      newPointsY[i] = pointsY[i];
+      newPointsX[i] = curves[currentCurveId].pointsX[i];
+      newPointsY[i] = curves[currentCurveId].pointsY[i];
     }
-    newPointsX[numberOfPoints - 1] = x;
-    newPointsY[numberOfPoints - 1] = y;
+    newPointsX[curves[currentCurveId].numberOfPoints - 1] = x;
+    newPointsY[curves[currentCurveId].numberOfPoints - 1] = y;
     curves[currentCurveId].pointsX = newPointsX;
     curves[currentCurveId].pointsY = newPointsY;
     resize();
@@ -192,11 +234,11 @@ function main(scale, ptX, ptY)
     curveCtx.clearRect(0,0, width, height);
     for (var i = 0; i < curves.length; i++)
     {
-      drawCurve(curves[i]);
+      drawCurve(curves[i], i == currentCurveId);
     }
   }
 
-  function drawCurve(curve)
+  function drawCurve(curve, isCurrent)
   {
     var step = 1 / width;
     var skeletonPointsX = new Float64Array(curve.numberOfPoints);
@@ -213,16 +255,31 @@ function main(scale, ptX, ptY)
 
     //plot control polygon lines
     curveCtx.lineWidth = plotWidth;
-    drawPolygon(canvasSpacePointsX, canvasSpacePointsY, curve.numberOfPoints, "#0000f5", "#0000f0");
+    var lineColor = "#e0e0e0";
+    var dotColor = "#a0a0a0";
+    if (isCurrent)
+    {
+      lineColor = "#0000f5";
+      dotColor = "#0000f0";
+    }
+    drawPolygon(canvasSpacePointsX, canvasSpacePointsY, curve.numberOfPoints, lineColor, dotColor);
 
     //plot curve
     curveCtx.lineWidth = doublePlotWidth;
-    var lastStepX = canvasSpacePointsX[0], lastStepY = height1 - canvasSpacePointsY[0];
+
+    var startCurve = deCasteljau(canvasSpacePointsX, canvasSpacePointsY, t, false)
+    var lastStepX = startCurve[0]
+    var lastStepY = height1 - startCurve[1];
+    var curveColor = "#a04040";
+    if (isCurrent)
+    {
+      curveColor = "#f00000";
+    }
     //Draw Curve step
     for (var t = curve.startT; t < curve.endT; t += step)
     {
       curveStep = deCasteljau(canvasSpacePointsX, canvasSpacePointsY, t, false);
-      curveCtx.strokeStyle = "#f00000";
+      curveCtx.strokeStyle = curveColor;
       curveCtx.beginPath();
       curveCtx.moveTo(lastStepX, lastStepY);
       curveCtx.lineTo(curveStep[0], height1 - curveStep[1]);
@@ -282,8 +339,8 @@ function main(scale, ptX, ptY)
     //No point is chosen
     if (dragId < 0) return;
     var destCoordinates = getXY(ev);
-    pointsX[dragId] = destCoordinates[0];
-    pointsY[dragId] = destCoordinates[1];
+    curves[currentCurveId].pointsX[dragId] = destCoordinates[0];
+    curves[currentCurveId].pointsY[dragId] = destCoordinates[1];
     drawCurves();
     ev.preventDefault();
   }
@@ -299,10 +356,10 @@ function main(scale, ptX, ptY)
 
     var minimumDistance = width, distanceSquare, xDelta, yDelta;
     //Get closest point to the click
-    for (var i = 0; i < numberOfPoints; i++)
+    for (var i = 0; i < curves[currentCurveId].numberOfPoints; i++)
     {
-      xDelta = (clickCoordinates[0] - pointsX[i]);
-      yDelta = (clickCoordinates[1] - pointsY[i]);
+      xDelta = (clickCoordinates[0] - curves[currentCurveId].pointsX[i]);
+      yDelta = (clickCoordinates[1] - curves[currentCurveId].pointsY[i]);
       distanceSquare = xDelta * xDelta + yDelta * yDelta;
       if ( distanceSquare < minimumDistance )
       {
@@ -310,7 +367,8 @@ function main(scale, ptX, ptY)
         minimumDistance = distanceSquare;
       }
     }
-    pointsX[dragId] = clickCoordinates[0];  pointsY[dragId] = clickCoordinates[1];
+    curves[currentCurveId].pointsX[dragId] = clickCoordinates[0];
+    curves[currentCurveId].pointsY[dragId] = clickCoordinates[1];
     drawCurves();
     ev.preventDefault();
   }

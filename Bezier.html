@@ -13,6 +13,9 @@
 
 			<br/>
 		<div>
+			<select id = "curvesList" size = "5" required="True" style="width: 500px;"/>
+		</div>
+		<div>
 			<input id="slider" type="range" min="0" max="100" value="100" style="width: 500px;" />
 		</div>
 		<h2>
@@ -26,13 +29,26 @@
 			C 							- De Casteljau skeleton visualization
 			<br/>
 		</h2>
-		<button>
+		<br/><br/>
+
+		<br/><br/>
+
+		<input type="file" id="fileInput" accept=".xml">
+		</input>
+		<br/>
+		<button id="downloadButton">
+			<h2>
+				Download curve...
+			</h2>
+		</button>
+
+		<button id="polynomButton">
 			<h2>
 				Show Polynomials
 			</h2>
 			<script>
 			$("#bernsteinCanvas").hide();
-				$("button").click(function(){
+				$("#polynomButton").click(function(){
 				    $("#bernsteinCanvas").toggle(1000);
 				});
 			</script>
