@@ -8,7 +8,7 @@ $( document ).ready(function()
 function main(scale, ptX, ptY)
 {
   var currentCurveId = 0;
-  var timer, deCasteljauRatio;
+  var timer, deCasteljauRatio = 1;
   var curves;
   var curveCanvas, polynomialsCanvas, curveCtx, polynomialsCtx, width, height, height1, plotWidth, doublePlotWidth,  dragId = -1;
   var iColor = ["#f00000","#00f000","#0000f0","#00f0f0","#f0f000","#f000f0","#090909"];
@@ -20,7 +20,7 @@ function main(scale, ptX, ptY)
     var curve = {
       points : [],
       startT : 0,
-      endT : .5
+      endT : 1
     };
     for (var i = 0; i < ptX.length; i++)
     {
@@ -31,6 +31,7 @@ function main(scale, ptX, ptY)
     }
     curves = [curve];
     updateCurvesList();
+    $("#slider").value = $("#slider").max;
     curveCanvas = $("#bezierCanvas").get(0);
     curveCtx = curveCanvas.getContext("2d");
     polynomialsCanvas = $("#bernsteinCanvas").get(0);
@@ -41,7 +42,7 @@ function main(scale, ptX, ptY)
     $("#bezierCanvas").mousemove(drag);
     $("#bezierCanvas").mousedown(startDrag);
     $("#bezierCanvas").mouseup(stopDrag);
-    $('#slider').on("change mousemove", function()
+    $("#slider").on("change mousemove", function()
     {
       deCasteljauRatio = this.value/this.max;
       drawCurves()
@@ -125,16 +126,53 @@ function main(scale, ptX, ptY)
       case 46:
         deletePoint();
         break;
+      //S
+      case 83:
+        splitCurve();
+        break;
       //C
       case 67:
         drawDeCasteljau();
         break;
     }
   }
-  function splitCurve(curve, t)
-  {
 
+  function splitCurve()
+  {
+    console.log(curves[currentCurveId].points);
+    if (deCasteljauRatio <= curves[currentCurveId].startT ||
+        deCasteljauRatio >= curves[currentCurveId].endT)
+    {
+      return;
+    }
+    var skeletonPoints = deCasteljau(curves[currentCurveId].points, deCasteljauRatio);
+    console.log(skeletonPoints[0]);
+    var newCurve = {
+      points : [],
+      startT : 0,
+      endT : (curves[currentCurveId].endT - deCasteljauRatio) / (1 - deCasteljauRatio)
+    };
+    var oldCurve = {
+      points : [],
+      startT : curves[currentCurveId].startT / deCasteljauRatio,
+      endT : 1
+    };
+    for (var i = 0; i < curves[currentCurveId].points.length; i++)
+    {
+      oldCurve.points.push(skeletonPoints[i][0]);
+      newCurve.points.push(skeletonPoints[curves[currentCurveId].points.length - i - 1][i])
+      console.log(
+         skeletonPoints.length,
+         skeletonPoints[curves[currentCurveId].points.length - i - 1].length,
+         curves[currentCurveId].points.length - i - 1,
+         i,
+         skeletonPoints[curves[currentCurveId].points.length - i - 1][i]);
+    }
+    curves[currentCurveId] = oldCurve;
+    curves.push(newCurve);
+    resize();
   }
+
   function drawDeCasteljau()
   {
     deCasteljauRatio = 0;
@@ -233,6 +271,9 @@ function main(scale, ptX, ptY)
     {
       drawCurve(curves[i], i == currentCurveId);
     }
+    curveCtx.font="30px Courier New";
+    var roundT=(Math.round(deCasteljauRatio*100)/100);
+    curveCtx.fillText("t=".concat(roundT), 30, 30);
   }
 
   function drawCurve(curve, isCurrent)
@@ -263,7 +304,7 @@ function main(scale, ptX, ptY)
     //plot curve
     curveCtx.lineWidth = doublePlotWidth;
 
-    var startCurve = deCasteljau(canvasSpacePoints, t, false)
+    var startCurve = deCasteljau(canvasSpacePoints, t).pop()[0]
     var lastStep = startCurve;
     var curveColor = "#a04040";
     if (isCurrent)
@@ -273,7 +314,7 @@ function main(scale, ptX, ptY)
     //Draw Curve step
     for (var t = curve.startT; t < curve.endT; t += step)
     {
-      curveStep = deCasteljau(canvasSpacePoints, t, false);
+      curveStep = deCasteljau(canvasSpacePoints, t).pop()[0];
       curveCtx.strokeStyle = curveColor;
       curveCtx.beginPath();
       curveCtx.moveTo(lastStep.x, height1 - lastStep.y);
@@ -281,10 +322,15 @@ function main(scale, ptX, ptY)
       curveCtx.stroke();
       lastStep = curveStep;
     }
-    //Draw skeleton
+    //Draw De Casteljau skeleton
     if (deCasteljauRatio > curve.startT && deCasteljauRatio < curve.endT)
     {
-      deCasteljau(canvasSpacePoints, deCasteljauRatio, true);
+      var deCasteljauPoints = deCasteljau(canvasSpacePoints, deCasteljauRatio);
+      for (var j = 1; j < deCasteljauPoints.length; j++)
+      {
+
+        drawPolygon(deCasteljauPoints[j], plotWidth, "#00f000", "#0f0f0f");
+      };
     }
   }
 
@@ -306,15 +352,9 @@ function main(scale, ptX, ptY)
           y : (1 - t) * skeletonPoints[j-1][i].y + t * skeletonPoints[j-1][i + 1].y
         };
       }
-      if(shouldDraw)
-      {
-        curveCtx.font="30px Courier New";
-        var roundT=(Math.round(t*100)/100);
-        curveCtx.fillText("t=".concat(roundT), 30, 30);
-        drawPolygon(skeletonPoints[j], plotWidth, "#00f000", "#0f0f0f");
-      }
+
     }
-    return skeletonPoints.pop()[0];
+    return skeletonPoints;
   }
 
   function resize()
@@ -329,6 +369,7 @@ function main(scale, ptX, ptY)
      polynomialsCanvas.height = height;
      drawBernsteinPolynomial();
      drawCurves();
+     updateCurvesList();
   }
 
   function drag(ev)
