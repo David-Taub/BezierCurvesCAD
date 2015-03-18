@@ -18,12 +18,17 @@ function main(scale, ptX, ptY)
   function init()
   {
     var curve = {
-      numberOfPoints : ptX.length,
-      pointsX : new Float64Array(ptX),
-      pointsY : new Float64Array(ptY),
+      points : [],
       startT : 0,
       endT : .5
     };
+    for (var i = 0; i < ptX.length; i++)
+    {
+      curve.points[i] = {
+        x : ptX[i],
+        y : ptY[i]
+      };
+    }
     curves = [curve];
     updateCurvesList();
     curveCanvas = $("#bezierCanvas").get(0);
@@ -126,7 +131,10 @@ function main(scale, ptX, ptY)
         break;
     }
   }
+  function splitCurve(curve, t)
+  {
 
+  }
   function drawDeCasteljau()
   {
     deCasteljauRatio = 0;
@@ -147,37 +155,26 @@ function main(scale, ptX, ptY)
 
   //Add point as last in polygon, coordinates are between 0 to 1
   //e.g. addPoint(0.3, 0.5)
-  function addPoint(x, y)
+  function addPoint(newPoint)
   {
-    curves[currentCurveId].numberOfPoints += 1;
-    var newPointsX = new Float64Array(curves[currentCurveId].numberOfPoints);
-    var newPointsY = new Float64Array(curves[currentCurveId].numberOfPoints);
-    //copy old array to new
-    for (var i = 0; i < curves[currentCurveId].numberOfPoints; i += 1)
-    {
-      newPointsX[i] = curves[currentCurveId].pointsX[i];
-      newPointsY[i] = curves[currentCurveId].pointsY[i];
-    }
-    newPointsX[curves[currentCurveId].numberOfPoints - 1] = x;
-    newPointsY[curves[currentCurveId].numberOfPoints - 1] = y;
-    curves[currentCurveId].pointsX = newPointsX;
-    curves[currentCurveId].pointsY = newPointsY;
+    curves[currentCurveId].points.push(newPoint);
     resize();
   }
 
   //Delete last point in polygon
   function deletePoint()
   {
-    curves[currentCurveId].numberOfPoints -= 1;
+    curves[currentCurveId].points.pop();
     resize();
   }
 
   function drawBernsteinPolynomial()
   {
     //Setup
-    var step = doublePlotWidth / (width - doublePlotWidth), t = step;
-    var lastStepValues = new Float64Array(curves[currentCurveId].numberOfPoints + 1);
-    var currentStepValues = new Float64Array(curves[currentCurveId].numberOfPoints + 1);
+    var step = doublePlotWidth / (width - doublePlotWidth)
+    var t = step;
+    var lastStepValues = new Float64Array(curves[currentCurveId].points.length + 1);
+    var currentStepValues = new Float64Array(curves[currentCurveId].points.length + 1);
     currentStepValues[1] = height1;
     polynomialsCtx.clearRect(0,0, width, height);
     polynomialsCtx.lineWidth = plotWidth;
@@ -186,10 +183,10 @@ function main(scale, ptX, ptY)
     {
       lastStepValues.set(currentStepValues);
       //Clean current step
-      currentStepValues = new Float64Array(curves[currentCurveId].numberOfPoints + 1);
+      currentStepValues = new Float64Array(curves[currentCurveId].points.length + 1);
       currentStepValues[1] = height1;
       //Calc current pixel location - Bernstein polynomials
-      for (var j = 1; j < curves[currentCurveId].numberOfPoints; j++)
+      for (var j = 1; j < curves[currentCurveId].points.length; j++)
       {
         for (var i = j+1; i > 0; i--)
         {
@@ -197,7 +194,7 @@ function main(scale, ptX, ptY)
         }
       }
       //Plot
-      for (var poliynomialId = 1; poliynomialId < curves[currentCurveId].numberOfPoints + 1; poliynomialId++)
+      for (var poliynomialId = 1; poliynomialId < curves[currentCurveId].points.length + 1; poliynomialId++)
       {
         polynomialsCtx.strokeStyle = iColor[(poliynomialId - 1) % 7];
         polynomialsCtx.beginPath();
@@ -210,21 +207,21 @@ function main(scale, ptX, ptY)
   }
 
   //Draw lines and dots (polygon is open, last and first dots are not drawn)
-  function drawPolygon(polygonPointsX, polygonPointsY, sizeOfPolygon, lineWidth, lineColor, dotColor)
+  function drawPolygon(polygonPoints, lineWidth, lineColor, dotColor)
   {
       curveCtx.lineWidth = lineWidth;
       curveCtx.beginPath();
-      curveCtx.moveTo(polygonPointsX[0], height1 - polygonPointsY[0]);
-      for (var i = 0; i < sizeOfPolygon; i++)
+      curveCtx.moveTo(polygonPoints[0].x, height1 - polygonPoints[0].y);
+      for (var i = 0; i < polygonPoints.length; i++)
       {
         curveCtx.strokeStyle = dotColor;
-        curveCtx.strokeRect(polygonPointsX[i] - plotWidth,
-                            height1 - polygonPointsY[i] - plotWidth,
+        curveCtx.strokeRect(polygonPoints[i].x - plotWidth,
+                            height1 - polygonPoints[i].y - plotWidth,
                             doublePlotWidth,
                             doublePlotWidth);
         curveCtx.stroke();
         curveCtx.strokeStyle = lineColor;
-        curveCtx.lineTo(polygonPointsX[i], height1 - polygonPointsY[i]);
+        curveCtx.lineTo(polygonPoints[i].x, height1 - polygonPoints[i].y);
         curveCtx.stroke();
       }
   }
@@ -241,16 +238,15 @@ function main(scale, ptX, ptY)
   function drawCurve(curve, isCurrent)
   {
     var step = 1 / width;
-    var skeletonPointsX = new Float64Array(curve.numberOfPoints);
-    var skeletonPointsY = new Float64Array(curve.numberOfPoints);
-    var canvasSpacePointsX = new Float64Array(curve.numberOfPoints);
-    var canvasSpacePointsY = new Float64Array(curve.numberOfPoints);
+    var canvasSpacePoints = [];
 
     //Set x,y in canvas coordinates, plot control points
-    for (var i = 0; i < curve.numberOfPoints; i++)
+    for (var i = 0; i < curve.points.length; i++)
     {
-      canvasSpacePointsX[i] = curve.pointsX[i] * width;
-      canvasSpacePointsY[i] = curve.pointsY[i] * height1;
+      canvasSpacePoints[i] = {
+        x : curve.points[i].x * width,
+        y : curve.points[i].y * height1
+      };
     }
 
     //plot control polygon lines
@@ -262,14 +258,13 @@ function main(scale, ptX, ptY)
       lineColor = "#0000f5";
       dotColor = "#0000f0";
     }
-    drawPolygon(canvasSpacePointsX, canvasSpacePointsY, curve.numberOfPoints, lineColor, dotColor);
+    drawPolygon(canvasSpacePoints, plotWidth, lineColor, dotColor);
 
     //plot curve
     curveCtx.lineWidth = doublePlotWidth;
 
-    var startCurve = deCasteljau(canvasSpacePointsX, canvasSpacePointsY, t, false)
-    var lastStepX = startCurve[0]
-    var lastStepY = height1 - startCurve[1];
+    var startCurve = deCasteljau(canvasSpacePoints, t, false)
+    var lastStep = startCurve;
     var curveColor = "#a04040";
     if (isCurrent)
     {
@@ -278,46 +273,48 @@ function main(scale, ptX, ptY)
     //Draw Curve step
     for (var t = curve.startT; t < curve.endT; t += step)
     {
-      curveStep = deCasteljau(canvasSpacePointsX, canvasSpacePointsY, t, false);
+      curveStep = deCasteljau(canvasSpacePoints, t, false);
       curveCtx.strokeStyle = curveColor;
       curveCtx.beginPath();
-      curveCtx.moveTo(lastStepX, lastStepY);
-      curveCtx.lineTo(curveStep[0], height1 - curveStep[1]);
+      curveCtx.moveTo(lastStep.x, height1 - lastStep.y);
+      curveCtx.lineTo(curveStep.x, height1 - curveStep.y);
       curveCtx.stroke();
-      lastStepX = curveStep[0];
-      lastStepY = height1 - curveStep[1];
+      lastStep = curveStep;
     }
     //Draw skeleton
     if (deCasteljauRatio > curve.startT && deCasteljauRatio < curve.endT)
     {
-      deCasteljau(canvasSpacePointsX, canvasSpacePointsY, deCasteljauRatio, true);
+      deCasteljau(canvasSpacePoints, deCasteljauRatio, true);
     }
   }
 
-  function deCasteljau(canvasSpacePointsX, canvasSpacePointsY, t, shouldDraw)
+  function deCasteljau(canvasSpacePoints, t, shouldDraw)
   {
-    var numberOfPoints = canvasSpacePointsX.length;
-    var skeletonPointsX = new Float64Array(numberOfPoints)
-    var skeletonPointsY = new Float64Array(numberOfPoints);
-    skeletonPointsX.set(canvasSpacePointsX);
-    skeletonPointsY.set(canvasSpacePointsY);
-    for (var j = numberOfPoints - 1; j > 0; j--)
+    var skeletonPoints = [];
+    //first run - the control points
+    skeletonPoints[0] = canvasSpacePoints;
+
+    //"recursive" runs of the algorithm (implemented not recursively)
+    for (var j = 1; j < canvasSpacePoints.length; j++)
     {
+      skeletonPoints[j] = [];
       //Skeleton points in current iteration
-      for (var i = 0; i < j; i++)
+      for (var i = 0; i < canvasSpacePoints.length - j; i++)
       {
-        skeletonPointsX[i] = (1 - t) * skeletonPointsX[i] + t * skeletonPointsX[i + 1];
-        skeletonPointsY[i] = (1 - t) * skeletonPointsY[i] + t * skeletonPointsY[i + 1];
+        skeletonPoints[j][i] = {
+          x : (1 - t) * skeletonPoints[j-1][i].x + t * skeletonPoints[j-1][i + 1].x,
+          y : (1 - t) * skeletonPoints[j-1][i].y + t * skeletonPoints[j-1][i + 1].y
+        };
       }
       if(shouldDraw)
       {
         curveCtx.font="30px Courier New";
         var roundT=(Math.round(t*100)/100);
         curveCtx.fillText("t=".concat(roundT), 30, 30);
-        drawPolygon(skeletonPointsX, skeletonPointsY, j, plotWidth, "#00f000", "#0f0f0f");
+        drawPolygon(skeletonPoints[j], plotWidth, "#00f000", "#0f0f0f");
       }
     }
-    return [skeletonPointsX[0], skeletonPointsY[0]];
+    return skeletonPoints.pop()[0];
   }
 
   function resize()
@@ -338,9 +335,7 @@ function main(scale, ptX, ptY)
   {
     //No point is chosen
     if (dragId < 0) return;
-    var destCoordinates = getXY(ev);
-    curves[currentCurveId].pointsX[dragId] = destCoordinates[0];
-    curves[currentCurveId].pointsY[dragId] = destCoordinates[1];
+    curves[currentCurveId].points[dragId] = getXY(ev);
     drawCurves();
     ev.preventDefault();
   }
@@ -350,16 +345,16 @@ function main(scale, ptX, ptY)
     var clickCoordinates = getXY(ev);
     if (ev.ctrlKey)
     {
-      addPoint(clickCoordinates[0], clickCoordinates[1]);
+      addPoint(clickCoordinates);
       return;
     }
 
-    var minimumDistance = width, distanceSquare, xDelta, yDelta;
     //Get closest point to the click
-    for (var i = 0; i < curves[currentCurveId].numberOfPoints; i++)
+    var minimumDistance = width, distanceSquare, xDelta, yDelta;
+    for (var i = 0; i < curves[currentCurveId].points.length; i++)
     {
-      xDelta = (clickCoordinates[0] - curves[currentCurveId].pointsX[i]);
-      yDelta = (clickCoordinates[1] - curves[currentCurveId].pointsY[i]);
+      xDelta = (clickCoordinates.x - curves[currentCurveId].points[i].x);
+      yDelta = (clickCoordinates.y - curves[currentCurveId].points[i].y);
       distanceSquare = xDelta * xDelta + yDelta * yDelta;
       if ( distanceSquare < minimumDistance )
       {
@@ -367,8 +362,7 @@ function main(scale, ptX, ptY)
         minimumDistance = distanceSquare;
       }
     }
-    curves[currentCurveId].pointsX[dragId] = clickCoordinates[0];
-    curves[currentCurveId].pointsY[dragId] = clickCoordinates[1];
+    curves[currentCurveId].points[dragId] = clickCoordinates;
     drawCurves();
     ev.preventDefault();
   }
@@ -387,8 +381,9 @@ function main(scale, ptX, ptY)
       ev = ev.touches[0];
     }
     var rect = curveCanvas.getBoundingClientRect();
-    var x = (ev.clientX - rect.left) / width,
-        y = (height1 - (ev.clientY - rect.top)) / height;
-    return [x, y];
+    return {
+      x : (ev.clientX - rect.left) / width,
+      y : (height1 - (ev.clientY - rect.top)) / height
+    };
   }
 } // end Bezier
