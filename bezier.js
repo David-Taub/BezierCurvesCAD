@@ -203,6 +203,10 @@ function main(scale, ptX, ptY)
   function deletePoint()
   {
     curves[currentCurveId].points.pop();
+    if (curves[currentCurveId].points.length == 0)
+    {
+      curves.splice(currentCurveId, 1);
+    }
     resize();
   }
 
@@ -371,6 +375,7 @@ function main(scale, ptX, ptY)
      drawCurves();
      updateCurvesList();
   }
+
 
   function drag(ev)
   {
