@@ -170,6 +170,7 @@ function main(scale, ptX, ptY)
     }
     curves[currentCurveId] = oldCurve;
     curves.push(newCurve);
+    updateCurvesList();
     resize();
   }
 
@@ -206,6 +207,7 @@ function main(scale, ptX, ptY)
     if (curves[currentCurveId].points.length == 0)
     {
       curves.splice(currentCurveId, 1);
+      updateCurvesList();
     }
     resize();
   }
@@ -373,7 +375,6 @@ function main(scale, ptX, ptY)
      polynomialsCanvas.height = height;
      drawBernsteinPolynomial();
      drawCurves();
-     updateCurvesList();
   }
 
 
