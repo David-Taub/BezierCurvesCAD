@@ -30,6 +30,7 @@ function main(scale, ptX, ptY)
       };
     }
     curves = [curve];
+
     updateCurvesList();
     $("#slider").value = $("#slider").max;
     curveCanvas = $("#bezierCanvas").get(0);
@@ -44,6 +45,7 @@ function main(scale, ptX, ptY)
     $("#bezierCanvas").mouseup(stopDrag);
     $("#slider").on("change mousemove", function()
     {
+      clearInterval(timer);
       deCasteljauRatio = this.value/this.max;
       drawCurves()
     });
@@ -134,42 +136,44 @@ function main(scale, ptX, ptY)
       case 67:
         drawDeCasteljau();
         break;
+      //M
+      case 77:
+        mergeCurves();
+        break;
     }
   }
 
   function splitCurve()
   {
-    console.log(curves[currentCurveId].points);
+    //check if t value is in range
     if (deCasteljauRatio <= curves[currentCurveId].startT ||
         deCasteljauRatio >= curves[currentCurveId].endT)
     {
       return;
     }
+
     var skeletonPoints = deCasteljau(curves[currentCurveId].points, deCasteljauRatio);
-    console.log(skeletonPoints[0]);
-    var newCurve = {
+    //build two curves
+    var postfixCurve = {
       points : [],
       startT : 0,
       endT : (curves[currentCurveId].endT - deCasteljauRatio) / (1 - deCasteljauRatio)
     };
-    var oldCurve = {
+    var prefixCurve = {
       points : [],
       startT : curves[currentCurveId].startT / deCasteljauRatio,
       endT : 1
     };
+    //add points to new curves
     for (var i = 0; i < curves[currentCurveId].points.length; i++)
     {
-      oldCurve.points.push(skeletonPoints[i][0]);
-      newCurve.points.push(skeletonPoints[curves[currentCurveId].points.length - i - 1][i])
-      console.log(
-         skeletonPoints.length,
-         skeletonPoints[curves[currentCurveId].points.length - i - 1].length,
-         curves[currentCurveId].points.length - i - 1,
-         i,
-         skeletonPoints[curves[currentCurveId].points.length - i - 1][i]);
+      prefixCurve.points.push(skeletonPoints[i][0]);
+      postfixCurve.points.push(skeletonPoints[curves[currentCurveId].points.length - i - 1][i])
     }
-    curves[currentCurveId] = oldCurve;
-    curves.push(newCurve);
+    //add new curves to the curves list
+    curves[currentCurveId] = prefixCurve;
+    curves.push(postfixCurve);
+
     updateCurvesList();
     resize();
   }
@@ -183,13 +187,14 @@ function main(scale, ptX, ptY)
   function stepDeCasteljau()
   {
     deCasteljauRatio += 0.001;
-    $("#slider").val(deCasteljauRatio * $("#slider").prop('max'));
-    drawCurves();
     //Stop
     if(deCasteljauRatio >= 1)
     {
       clearInterval(timer);
+      return;
     }
+    $("#slider").val(deCasteljauRatio * $("#slider").prop('max'));
+    drawCurves();
   }
 
   //Add point as last in polygon, coordinates are between 0 to 1
@@ -204,12 +209,98 @@ function main(scale, ptX, ptY)
   function deletePoint()
   {
     curves[currentCurveId].points.pop();
+    //curve is empty, delete it
     if (curves[currentCurveId].points.length == 0)
     {
       curves.splice(currentCurveId, 1);
       updateCurvesList();
     }
     resize();
+  }
+
+  function findClosestCurve()
+  {
+    var minimum = 1;
+    var minimumId = currentCurveId;
+    for (var i = 0; i < curves.length; i++)
+    {
+      console.log
+      if (i != currentCurveId)
+      {
+        var distanceSquare = standardMeeting(currentCurveId, i);
+        if (distanceSquare < minimum)
+        {
+          minimum = distanceSquare;
+          minimumId = i;
+        }
+      }
+    }
+    return minimumId;
+  }
+
+  function mergeCurves()
+  {
+    var slaveId = findClosestCurve();
+    var masterId = currentCurveId;
+    //Curves without enough points or not enough curves
+    if (curves[masterId].points.length < 2
+        || curves[slaveId].points.length < 2
+        || masterId == slaveId)
+    {
+      return;
+    }
+    //Flip curves order if necessary, so last of master is close to first of slave
+    standardMeeting(masterId, slaveId, true);
+
+    //remove last point of master
+    var masterLastPoint1 = curves[masterId].points.pop();
+    var masterLastPoint2 = curves[masterId].points[curves[masterId].points.length - 1];
+
+    var lastEdgeOfMaster = calcDistanceSquare(masterLastPoint1, masterLastPoint2);
+    var firstEdgeOfSlave = calcDistanceSquare(masterLastPoint1, curves[slaveId].points[1]);
+
+    //correct first edge of the slave curve
+    var ratio = 1 + Math.sqrt(firstEdgeOfSlave / lastEdgeOfMaster);
+    curves[slaveId].points[1].x = (1 - ratio) * masterLastPoint2.x + ratio * masterLastPoint1.x;
+    curves[slaveId].points[1].y = (1 - ratio) * masterLastPoint2.y + ratio * masterLastPoint1.y;
+
+    //merge two curves into one
+    //remove first point of slave
+    curves[slaveId].points.splice(0, 1);
+    curves[masterId].points = curves[masterId].points.concat(curves[slaveId].points);
+
+    //remove slave curve
+    curves.splice(slaveId, 1);
+    updateCurvesList();
+    resize();
+  }
+
+  function standardMeeting(masterId, slaveId, reverseToStandard)
+  {
+    var masterPoints = curves[masterId].points;
+    var slavePoints = curves[slaveId].points;
+
+    var firstToFirst = calcDistanceSquare(masterPoints[0], slavePoints[0]);
+    var firstToLast = calcDistanceSquare(masterPoints[0], slavePoints[slavePoints.length - 1]);
+    var lastToFirst = calcDistanceSquare(masterPoints[masterPoints.length - 1], slavePoints[0]);
+    var lastToLast = calcDistanceSquare(masterPoints[masterPoints.length - 1], slavePoints[slavePoints.length - 1]);
+    if (!reverseToStandard)
+    {
+      return Math.min(firstToFirst, firstToLast, lastToFirst, lastToLast);
+    }
+    switch (Math.min(firstToFirst, firstToLast, lastToFirst, lastToLast))
+    {
+      case firstToFirst:
+        curves[masterId].points = masterPoints.reverse()
+        break;
+      case firstToLast:
+        curves[masterId].points = masterPoints.reverse()
+        curves[slaveId].points = slavePoints.reverse()
+        break;
+      case lastToLast:
+        curves[slaveId].points = slavePoints.reverse()
+        break;
+    }
   }
 
   function drawBernsteinPolynomial()
@@ -258,12 +349,14 @@ function main(scale, ptX, ptY)
       curveCtx.moveTo(polygonPoints[0].x, height1 - polygonPoints[0].y);
       for (var i = 0; i < polygonPoints.length; i++)
       {
+        //Dot
         curveCtx.strokeStyle = dotColor;
         curveCtx.strokeRect(polygonPoints[i].x - plotWidth,
                             height1 - polygonPoints[i].y - plotWidth,
                             doublePlotWidth,
                             doublePlotWidth);
         curveCtx.stroke();
+        //Line
         curveCtx.strokeStyle = lineColor;
         curveCtx.lineTo(polygonPoints[i].x, height1 - polygonPoints[i].y);
         curveCtx.stroke();
@@ -277,8 +370,13 @@ function main(scale, ptX, ptY)
     {
       drawCurve(curves[i], i == currentCurveId);
     }
+    if (deCasteljauRatio == 1)
+    {
+      return;
+    }
+    //Write the t value
     curveCtx.font="30px Courier New";
-    var roundT=(Math.round(deCasteljauRatio*100)/100);
+    var roundT = (Math.round(deCasteljauRatio*100)/100);
     curveCtx.fillText("t=".concat(roundT), 30, 30);
   }
 
@@ -286,7 +384,6 @@ function main(scale, ptX, ptY)
   {
     var step = 1 / width;
     var canvasSpacePoints = [];
-
     //Set x,y in canvas coordinates, plot control points
     for (var i = 0; i < curve.points.length; i++)
     {
@@ -298,10 +395,12 @@ function main(scale, ptX, ptY)
 
     //plot control polygon lines
     curveCtx.lineWidth = plotWidth;
+    //disabled colors
     var lineColor = "#e0e0e0";
     var dotColor = "#a0a0a0";
     if (isCurrent)
     {
+      //enabled colors
       lineColor = "#0000f5";
       dotColor = "#0000f0";
     }
@@ -334,7 +433,6 @@ function main(scale, ptX, ptY)
       var deCasteljauPoints = deCasteljau(canvasSpacePoints, deCasteljauRatio);
       for (var j = 1; j < deCasteljauPoints.length; j++)
       {
-
         drawPolygon(deCasteljauPoints[j], plotWidth, "#00f000", "#0f0f0f");
       };
     }
@@ -387,6 +485,11 @@ function main(scale, ptX, ptY)
     ev.preventDefault();
   }
 
+  function calcDistanceSquare(a, b)
+  {
+    return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y);
+  }
+
   function startDrag(ev)
   {
     var clickCoordinates = getXY(ev);
@@ -400,9 +503,7 @@ function main(scale, ptX, ptY)
     var minimumDistance = width, distanceSquare, xDelta, yDelta;
     for (var i = 0; i < curves[currentCurveId].points.length; i++)
     {
-      xDelta = (clickCoordinates.x - curves[currentCurveId].points[i].x);
-      yDelta = (clickCoordinates.y - curves[currentCurveId].points[i].y);
-      distanceSquare = xDelta * xDelta + yDelta * yDelta;
+      distanceSquare = calcDistanceSquare(clickCoordinates, curves[currentCurveId].points[i]);;
       if ( distanceSquare < minimumDistance )
       {
         dragId = i;
