@@ -1,6 +1,6 @@
 $( document ).ready(function()
 {
-    var b1 = new main( .3, [ .1, .9, .9, .5], [.1, .9, .1, .1]);
+    var b1 = new main( .4, [ .1, .9, .9, .5], [.1, .9, .1, .1]);
 
 });
 
