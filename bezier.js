@@ -51,10 +51,6 @@ function main(scale, ptX, ptY)
     });
 
     //Mobile support
-
-    $("#bezierCanvas").bind('touchmove', drag);
-    $("#bezierCanvas").bind('touchstart', startDrag);
-    $("#bezierCanvas").bind('touchend', stopDrag);
     $(document).keyup(onKeyUp);
     $(document).resize(resize);
   }
@@ -73,6 +69,14 @@ function main(scale, ptX, ptY)
         $("#curvesList").append($("<option />").text(i));
       }
 
+    }
+    if($("#curvesList option").size() > currentCurveId)
+    {
+      $("#curvesList").val(currentCurveId + 1);
+    }
+    else
+    {
+      $("#curvesList").val(1);
     }
   }
 
@@ -199,9 +203,21 @@ function main(scale, ptX, ptY)
 
   //Add point as last in polygon, coordinates are between 0 to 1
   //e.g. addPoint(0.3, 0.5)
-  function addPoint(newPoint)
+  function addPoint(newPoint, isNewCurve)
   {
-    curves[currentCurveId].points.push(newPoint);
+    if (!isNewCurve)
+    {
+      curves[currentCurveId].points.push(newPoint);
+      resize();
+      return;
+    }
+    curves.push({
+      points : [newPoint],
+      startT : 0,
+      endT : 1
+    });
+    currentCurveId = curves.length - 1;
+    updateCurvesList();
     resize();
   }
 
@@ -213,6 +229,7 @@ function main(scale, ptX, ptY)
     if (curves[currentCurveId].points.length == 0)
     {
       curves.splice(currentCurveId, 1);
+      currentCurveId--;
       updateCurvesList();
     }
     resize();
@@ -495,7 +512,7 @@ function main(scale, ptX, ptY)
     var clickCoordinates = getXY(ev);
     if (ev.ctrlKey)
     {
-      addPoint(clickCoordinates);
+      addPoint(clickCoordinates, ev.shiftKey);
       return;
     }
 
@@ -534,4 +551,4 @@ function main(scale, ptX, ptY)
       y : (height1 - (ev.clientY - rect.top)) / height
     };
   }
-} // end Bezier
+}
