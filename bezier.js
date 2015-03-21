@@ -176,6 +176,7 @@ function main(scale, ptX, ptY)
     download("curves.json", JSON.stringify(curves));
   }
 
+  //Download given text as a file with the given filename
   function download(filename, text)
   {
     var pom = document.createElement('a');
@@ -236,7 +237,9 @@ function main(scale, ptX, ptY)
         break;
     }
   }
-
+  //If deCasteljauRatio is in the current curve range, make two curves
+  //with the exact same shape where their meeting point is on the original
+  //curve at the deCasteljau as t parameter.
   function splitCurve()
   {
     //check if t value is in range
@@ -272,12 +275,14 @@ function main(scale, ptX, ptY)
     resize();
   }
 
+  //Start a timer that draws the moving DeCasteljau skeleton
   function drawDeCasteljau()
   {
     deCasteljauRatio = 0;
     timer = window.setInterval(stepDeCasteljau, 5);
   }
-
+  //Advance the current deCasteljauRatio and draw the Bezier curve with
+  //the DeCasteljau skeleton.
   function stepDeCasteljau()
   {
     deCasteljauRatio += 0.001;
@@ -293,6 +298,8 @@ function main(scale, ptX, ptY)
 
   //Add point as last in polygon, coordinates are between 0 to 1
   //e.g. addPoint(0.3, 0.5)
+  //If isNewCurve is true create a new curve and add the point to it.
+  //Otherwise adds the point to the current curve.
   function addPoint(newPoint, isNewCurve)
   {
     if (!isNewCurve)
@@ -311,7 +318,7 @@ function main(scale, ptX, ptY)
     resize();
   }
 
-  //Delete last point in polygon
+  //Delete last point in polygon of the current curve.
   function deletePoint()
   {
     pushToHistory();
@@ -326,6 +333,9 @@ function main(scale, ptX, ptY)
     resize();
   }
 
+  //Find the curve with beginning or end closest to the beginning or end
+  //of the current curve.
+  //Return the closest curve id.
   function findClosestCurve()
   {
     var minimum = 1;
@@ -345,6 +355,10 @@ function main(scale, ptX, ptY)
     return minimumId;
   }
 
+
+  //Make current curve meet the closest curve to it in a single point
+  //make the points order of the two curves "standard" (see standardMeeting
+  //with reverseToStandard true)
   function connectCurves()
   {
     pushToHistory();
@@ -355,6 +369,12 @@ function main(scale, ptX, ptY)
     resize();
   }
 
+  //Use the current curve as master and the closest to it as slave,
+  //make their points order "standard" (see standardMeeting with reverseToStandard true)
+  //Makes slave meet the master so the two are differentiable
+  //After that, if makeSingle is true, removes the meeting point of the
+  //two curves and removes the slave, after concatenating its points to the
+  //master curve
   function mergeCurves(makeSingle)
   {
     pushToHistory();
@@ -407,6 +427,10 @@ function main(scale, ptX, ptY)
     resize();
   }
 
+  //if reverseToStandard is false, return the square distance between the closest
+  //points of the two given curves.
+  //otherwise flip the curves points  order (if needed) so that the last point of
+  //the master and the first of the slave would be closest.
   function standardMeeting(masterId, slaveId, reverseToStandard)
   {
     var masterPoints = curves[masterId].points;
@@ -435,6 +459,7 @@ function main(scale, ptX, ptY)
     }
   }
 
+  //Draws the Bernstein Polynomials of current curve
   function drawBernsteinPolynomial()
   {
     //Setup
@@ -473,7 +498,9 @@ function main(scale, ptX, ptY)
     }
   }
 
-  //Draw lines and dots (polygon is open, last and first dots are not drawn)
+  //Add to canvas lines and dots of given polygon
+  // (polygon is open, last and first dots are not drawn)
+  // used to draw the control polygon and the DeCasteljau skeleton
   function drawPolygon(polygonPoints, lineWidth, lineColor, dotColor)
   {
       curveCtx.lineWidth = lineWidth;
@@ -495,6 +522,7 @@ function main(scale, ptX, ptY)
       }
   }
 
+  //Draw all curves on the canvas using drawCurves function
   function drawCurves()
   {
     curveCtx.clearRect(0,0, width, height);
@@ -512,14 +540,19 @@ function main(scale, ptX, ptY)
     curveCtx.fillText("t=".concat(roundT), 30, 30);
   }
 
+  //Adds to canvas a single curve (color are stronger if isCurrent is true)
+  //Draw:
+  // Control polygon
+  // Bezier curve (using the DeCasteljau function for the calculation)
+  // DeCasteljau skeleton (only if current DeCasteljau value is in the curve range)
   function drawCurve(curve, isCurrent)
   {
     var step = 1 / width;
-    var canvasSpacePoints = [];
+    var points = [];
     //Set x,y in canvas coordinates, plot control points
     for (var i = 0; i < curve.points.length; i++)
     {
-      canvasSpacePoints[i] = {
+      points[i] = {
         x : curve.points[i].x * width,
         y : curve.points[i].y * height1
       };
@@ -536,12 +569,12 @@ function main(scale, ptX, ptY)
       lineColor = "#0000f5";
       dotColor = "#0000f0";
     }
-    drawPolygon(canvasSpacePoints, plotWidth, lineColor, dotColor);
+    drawPolygon(points, plotWidth, lineColor, dotColor);
 
     //plot curve
     curveCtx.lineWidth = doublePlotWidth;
 
-    var startCurve = deCasteljau(canvasSpacePoints, t).pop()[0]
+    var startCurve = deCasteljau(points, t).pop()[0]
     var lastStep = startCurve;
     var curveColor = "#a04040";
     if (isCurrent)
@@ -551,7 +584,7 @@ function main(scale, ptX, ptY)
     //Draw Curve step
     for (var t = curve.startT; t < curve.endT; t += step)
     {
-      curveStep = deCasteljau(canvasSpacePoints, t).pop()[0];
+      curveStep = deCasteljau(points, t).pop()[0];
       curveCtx.strokeStyle = curveColor;
       curveCtx.beginPath();
       curveCtx.moveTo(lastStep.x, height1 - lastStep.y);
@@ -562,7 +595,7 @@ function main(scale, ptX, ptY)
     //Draw De Casteljau skeleton
     if (deCasteljauRatio > curve.startT && deCasteljauRatio < curve.endT)
     {
-      var deCasteljauPoints = deCasteljau(canvasSpacePoints, deCasteljauRatio);
+      var deCasteljauPoints = deCasteljau(points, deCasteljauRatio);
       for (var j = 1; j < deCasteljauPoints.length; j++)
       {
         drawPolygon(deCasteljauPoints[j], plotWidth, "#00f000", "#0f0f0f");
@@ -570,18 +603,24 @@ function main(scale, ptX, ptY)
     }
   }
 
-  function deCasteljau(canvasSpacePoints, t, shouldDraw)
+  //Receive points of control polygon and the t parameter of the Bezier function
+  //Return array of arrays of the DeCasteljau points by order:
+  //0 - the control points (n points)
+  //1 - first level of the skeleton points (n-1 points)
+  //...
+  //n-1 - the curve point (1 point)
+  function deCasteljau(points, t)
   {
     var skeletonPoints = [];
     //first run - the control points
-    skeletonPoints[0] = canvasSpacePoints;
+    skeletonPoints[0] = points;
 
     //"recursive" runs of the algorithm (implemented not recursively)
-    for (var j = 1; j < canvasSpacePoints.length; j++)
+    for (var j = 1; j < points.length; j++)
     {
       skeletonPoints[j] = [];
       //Skeleton points in current iteration
-      for (var i = 0; i < canvasSpacePoints.length - j; i++)
+      for (var i = 0; i < points.length - j; i++)
       {
         skeletonPoints[j][i] = {
           x : (1 - t) * skeletonPoints[j-1][i].x + t * skeletonPoints[j-1][i + 1].x,
