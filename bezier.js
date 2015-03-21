@@ -206,11 +206,9 @@ function main(scale, ptX, ptY)
         break;
       //C
       case 67:
-        drawDeCasteljau();
-        break;
-      //M
-      case 77:
-        mergeCurves();
+      //K
+      case 75:
+        mergeCurves(false);
         break;
       //Z
       case 90:
@@ -225,6 +223,16 @@ function main(scale, ptX, ptY)
         {
           redo();
         }
+        break;
+      //N
+      case 78:
+        currentCurveId++;
+        if (currentCurveId == curves.length)
+        {
+          currentCurveId = 0;
+        }
+        updateCurvesList();
+        resize();
         break;
     }
   }
@@ -337,7 +345,17 @@ function main(scale, ptX, ptY)
     return minimumId;
   }
 
-  function mergeCurves()
+  function connectCurves()
+  {
+    pushToHistory();
+    var slaveId = findClosestCurve();
+    var masterId = currentCurveId;
+    standardMeeting(masterId, slaveId, true);
+    curves[slaveId].points[0] = curves[masterId].points[curves[masterId].points.length - 1];
+    resize();
+  }
+
+  function mergeCurves(makeSingle)
   {
     pushToHistory();
     var slaveId = findClosestCurve();
@@ -353,8 +371,8 @@ function main(scale, ptX, ptY)
     standardMeeting(masterId, slaveId, true);
 
     //remove last point of master
-    var masterLastPoint1 = curves[masterId].points.pop();
-    var masterLastPoint2 = curves[masterId].points[curves[masterId].points.length - 1];
+    var masterLastPoint1 = curves[masterId].points[curves[masterId].points.length - 1];
+    var masterLastPoint2 = curves[masterId].points[curves[masterId].points.length - 2];
 
     var lastEdgeOfMaster = calcDistanceSquare(masterLastPoint1, masterLastPoint2);
     var firstEdgeOfSlave = calcDistanceSquare(masterLastPoint1, curves[slaveId].points[1]);
@@ -365,17 +383,27 @@ function main(scale, ptX, ptY)
     curves[slaveId].points[1].y = (1 - ratio) * masterLastPoint2.y + ratio * masterLastPoint1.y;
 
     //merge two curves into one
-    //remove first point of slave
-    curves[slaveId].points.splice(0, 1);
-    curves[masterId].points = curves[masterId].points.concat(curves[slaveId].points);
-
-    //remove slave curve
-    curves.splice(slaveId, 1);
-    if (masterId > slaveId)
+    if (makeSingle)
     {
-      currentCurveId--;
+      //remove last point of master
+      curves[masterId].points.pop();
+      //remove first point of slave
+      curves[slaveId].points.splice(0, 1);
+      curves[masterId].points = curves[masterId].points.concat(curves[slaveId].points);
+
+      //remove slave curve
+      curves.splice(slaveId, 1);
+      if (masterId > slaveId)
+      {
+        currentCurveId--;
+      }
+      updateCurvesList();
     }
-    updateCurvesList();
+    else
+    {
+      //Make first point of slave the last of masterId
+      curves[slaveId].points[0] = curves[masterId].points[curves[masterId].points.length - 1];
+    }
     resize();
   }
 
@@ -560,7 +588,6 @@ function main(scale, ptX, ptY)
           y : (1 - t) * skeletonPoints[j-1][i].y + t * skeletonPoints[j-1][i + 1].y
         };
       }
-
     }
     return skeletonPoints;
   }
