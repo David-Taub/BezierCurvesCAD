@@ -7,6 +7,7 @@ $( document ).ready(function()
 
 function main(scale, ptX, ptY)
 {
+  var HISTORY_MAX_SIZE = 50;
   var history = [], forwardHistory = [];
   var currentCurveId = 0;
   var timer, deCasteljauRatio = 1;
@@ -83,6 +84,7 @@ function main(scale, ptX, ptY)
 
   function pushToHistory()
   {
+    //Deep copy
     curvesCopy = [];
     for (var i = 0; i < curves.length; i++)
     {
@@ -93,6 +95,10 @@ function main(scale, ptX, ptY)
       });
     }
     history.push(curvesCopy);
+    if (history.length > HISTORY_MAX_SIZE)
+    {
+      history.shift();
+    }
     forwardHistory = [];
   }
 
