@@ -7,6 +7,7 @@ $( document ).ready(function()
 
 function main(scale, ptX, ptY)
 {
+  var history = [], forwardHistory = [];
   var currentCurveId = 0;
   var timer, deCasteljauRatio = 1;
   var curves;
@@ -55,6 +56,46 @@ function main(scale, ptX, ptY)
     $(document).resize(resize);
   }
 
+  function undo()
+  {
+    if (history.length == 0)
+    {
+      return;
+    }
+    forwardHistory.push(curves);
+
+    curves = history.pop();
+    updateCurvesList();
+    resize();
+  }
+
+  function redo()
+  {
+    if (forwardHistory.length == 0)
+    {
+      return;
+    }
+    history.push(curves);
+    curves = forwardHistory.pop();
+    updateCurvesList();
+    resize();
+  }
+
+  function pushToHistory()
+  {
+    curvesCopy = [];
+    for (var i = 0; i < curves.length; i++)
+    {
+      curvesCopy.push({
+        startT : curves[i].startT,
+        endT : curves[i].endT,
+        points : curves[i].points.slice()
+      });
+    }
+    history.push(curvesCopy);
+    forwardHistory = [];
+  }
+
   function updateCurvesList()
   {
     $('#curvesList').empty();
@@ -93,6 +134,7 @@ function main(scale, ptX, ptY)
     // Closure to capture the file information.
     reader.onload = function(e)
     {
+      pushToHistory();
       curves = JSON.parse(reader.result);
       updateCurvesList()
       resize();
@@ -144,6 +186,20 @@ function main(scale, ptX, ptY)
       case 77:
         mergeCurves();
         break;
+      //Z
+      case 90:
+        if (ev.ctrlKey)
+        {
+          undo();
+        }
+        break;
+      //Y
+      case 89:
+        if (ev.ctrlKey)
+        {
+          redo();
+        }
+        break;
     }
   }
 
@@ -155,7 +211,7 @@ function main(scale, ptX, ptY)
     {
       return;
     }
-
+    pushToHistory();
     var skeletonPoints = deCasteljau(curves[currentCurveId].points, deCasteljauRatio);
     //build two curves
     var postfixCurve = {
@@ -224,6 +280,7 @@ function main(scale, ptX, ptY)
   //Delete last point in polygon
   function deletePoint()
   {
+    pushToHistory();
     curves[currentCurveId].points.pop();
     //curve is empty, delete it
     if (curves[currentCurveId].points.length == 0)
@@ -241,7 +298,6 @@ function main(scale, ptX, ptY)
     var minimumId = currentCurveId;
     for (var i = 0; i < curves.length; i++)
     {
-      console.log
       if (i != currentCurveId)
       {
         var distanceSquare = standardMeeting(currentCurveId, i);
@@ -266,6 +322,7 @@ function main(scale, ptX, ptY)
     {
       return;
     }
+    pushToHistory();
     //Flip curves order if necessary, so last of master is close to first of slave
     standardMeeting(masterId, slaveId, true);
 
@@ -513,6 +570,7 @@ function main(scale, ptX, ptY)
 
   function startDrag(ev)
   {
+    pushToHistory();
     var clickCoordinates = getXY(ev);
     if (ev.ctrlKey)
     {
