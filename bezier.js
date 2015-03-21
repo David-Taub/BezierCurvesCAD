@@ -288,6 +288,10 @@ function main(scale, ptX, ptY)
 
     //remove slave curve
     curves.splice(slaveId, 1);
+    if (masterId > slaveId)
+    {
+      currentCurveId--;
+    }
     updateCurvesList();
     resize();
   }
