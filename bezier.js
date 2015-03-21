@@ -207,6 +207,12 @@ function main(scale, ptX, ptY)
         break;
       //C
       case 67:
+        drawDeCasteljau();
+        break;
+      //M
+      case 77:
+        mergeCurves();
+        break;
       //K
       case 75:
         mergeCurves(false);
