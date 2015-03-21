@@ -59,6 +59,7 @@ function main(scale, ptX, ptY)
 
   function undo()
   {
+    //Nothing in history
     if (history.length == 0)
     {
       return;
@@ -66,6 +67,10 @@ function main(scale, ptX, ptY)
     forwardHistory.push(curves);
 
     curves = history.pop();
+    if (currentCurveId >= curves.length)
+    {
+      currentCurveId = 0;
+    }
     updateCurvesList();
     resize();
   }
@@ -78,6 +83,10 @@ function main(scale, ptX, ptY)
     }
     history.push(curves);
     curves = forwardHistory.pop();
+    if (currentCurveId >= curves.length)
+    {
+      currentCurveId = 0;
+    }
     updateCurvesList();
     resize();
   }
@@ -88,13 +97,21 @@ function main(scale, ptX, ptY)
     curvesCopy = [];
     for (var i = 0; i < curves.length; i++)
     {
-      curvesCopy.push({
+      curveCopy = {
         startT : curves[i].startT,
         endT : curves[i].endT,
-        points : curves[i].points.slice()
-      });
+        points : []
+      };
+
+      for (var j = 0; j < curves[i].points.length; j++)
+      {
+        curveCopy.points.push($.extend({}, curves[i].points[j]));
+      }
+      curvesCopy.push(curveCopy);
     }
+
     history.push(curvesCopy);
+    //Keep history size limited
     if (history.length > HISTORY_MAX_SIZE)
     {
       history.shift();
@@ -104,6 +121,7 @@ function main(scale, ptX, ptY)
 
   function updateCurvesList()
   {
+    //remake list element in HTML
     $('#curvesList').empty();
     for (var i=1; i <= curves.length; i++)
     {
@@ -115,16 +133,16 @@ function main(scale, ptX, ptY)
       {
         $("#curvesList").append($("<option />").text(i));
       }
-
     }
+
+    //Make sure the current curve is selected
     if($("#curvesList option").size() > currentCurveId)
     {
       $("#curvesList").val(currentCurveId + 1);
+      return;
     }
-    else
-    {
-      $("#curvesList").val(1);
-    }
+    //select first curve
+    $("#curvesList").val(1);
   }
 
   function changeCurrentCurve()
@@ -133,6 +151,7 @@ function main(scale, ptX, ptY)
     resize();
   }
 
+  //Load curves from file which is selected in "browse..." element
   function loadCurves(ev) {
     var file = $("#fileInput")[0].files[0]; // FileList object
     var reader = new FileReader();
@@ -151,25 +170,26 @@ function main(scale, ptX, ptY)
   }
 
 
-
+  //download current curves in JSON format
   function saveCurves()
   {
-    download("curve.json", JSON.stringify(curves));
+    download("curves.json", JSON.stringify(curves));
   }
 
-  function download(filename, text) {
-      var pom = document.createElement('a');
-      pom.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-      pom.setAttribute('download', filename);
+  function download(filename, text)
+  {
+    var pom = document.createElement('a');
+    pom.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+    pom.setAttribute('download', filename);
 
-      if (document.createEvent) {
-          var event = document.createEvent('MouseEvents');
-          event.initEvent('click', true, true);
-          pom.dispatchEvent(event);
-      }
-      else {
-          pom.click();
-      }
+    if (document.createEvent) {
+        var event = document.createEvent('MouseEvents');
+        event.initEvent('click', true, true);
+        pom.dispatchEvent(event);
+    }
+    else {
+        pom.click();
+    }
   }
 
   function onKeyUp(ev)
@@ -319,6 +339,7 @@ function main(scale, ptX, ptY)
 
   function mergeCurves()
   {
+    pushToHistory();
     var slaveId = findClosestCurve();
     var masterId = currentCurveId;
     //Curves without enough points or not enough curves
@@ -328,7 +349,6 @@ function main(scale, ptX, ptY)
     {
       return;
     }
-    pushToHistory();
     //Flip curves order if necessary, so last of master is close to first of slave
     standardMeeting(masterId, slaveId, true);
 
@@ -547,16 +567,16 @@ function main(scale, ptX, ptY)
 
   function resize()
   {
-     height = width = Math.round(window.innerWidth * scale);
-     height1 = height-1;
-     plotWidth = Math.max(1, Math.round(width / 250));
-     doublePlotWidth = 2 * plotWidth;
-     curveCanvas.width = width;
-     curveCanvas.height = height;
-     polynomialsCanvas.width = width;
-     polynomialsCanvas.height = height;
-     drawBernsteinPolynomial();
-     drawCurves();
+    height = width = Math.round(window.innerWidth * scale);
+    height1 = height-1;
+    plotWidth = Math.max(1, Math.round(width / 250));
+    doublePlotWidth = 2 * plotWidth;
+    curveCanvas.width = width;
+    curveCanvas.height = height;
+    polynomialsCanvas.width = width;
+    polynomialsCanvas.height = height;
+    drawBernsteinPolynomial();
+    drawCurves();
   }
 
 
