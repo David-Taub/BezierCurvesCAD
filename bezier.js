@@ -91,6 +91,7 @@ function main(scale, ptX, ptY)
     resize();
   }
 
+
   function pushToHistory()
   {
     //Deep copy
@@ -211,11 +212,15 @@ function main(scale, ptX, ptY)
         break;
       //M
       case 77:
-        mergeCurves();
+        mergeCurves(0);
         break;
       //K
       case 75:
-        mergeCurves(false);
+        mergeCurves(1);
+        break;
+      //O
+      case 79:
+        mergeCurves(2);
         break;
       //Z
       case 90:
@@ -362,33 +367,20 @@ function main(scale, ptX, ptY)
   }
 
 
-  //Make current curve meet the closest curve to it in a single point
-  //make the points order of the two curves "standard" (see standardMeeting
-  //with reverseToStandard true)
-  function connectCurves()
-  {
-    pushToHistory();
-    var slaveId = findClosestCurve();
-    var masterId = currentCurveId;
-    standardMeeting(masterId, slaveId, true);
-    curves[slaveId].points[0] = curves[masterId].points[curves[masterId].points.length - 1];
-    resize();
-  }
-
   //Use the current curve as master and the closest to it as slave,
   //make their points order "standard" (see standardMeeting with reverseToStandard true)
-  //Makes slave meet the master so the two are differentiable
-  //After that, if makeSingle is true, removes the meeting point of the
-  //two curves and removes the slave, after concatenating its points to the
-  //master curve
-  function mergeCurves(makeSingle)
+  //Makes slave meet the master so the derivatives up to the derLevel are continuous.
+  //derLevel = 0 -> the curves are continuous
+  //derLevel = 1 -> the curves are differentiable
+  //derLevel = 2 -> the curves 2nd derivatives are continuous
+  function mergeCurves(derLevel)
   {
     pushToHistory();
     var slaveId = findClosestCurve();
     var masterId = currentCurveId;
     //Curves without enough points or not enough curves
-    if (curves[masterId].points.length < 2
-        || curves[slaveId].points.length < 2
+    if (curves[masterId].points.length <= derLevel
+        || curves[slaveId].points.length <= derLevel
         || masterId == slaveId)
     {
       return;
@@ -396,40 +388,39 @@ function main(scale, ptX, ptY)
     //Flip curves order if necessary, so last of master is close to first of slave
     standardMeeting(masterId, slaveId, true);
 
-    //remove last point of master
+    //Master points - P0,P1,...,Pm-1
+    //Slave points - Q0,Q1,...,Qn-1
+    //Q0 = Pm
     var masterLastPoint1 = curves[masterId].points[curves[masterId].points.length - 1];
+    curves[slaveId].points[0] = $.extend({}, masterLastPoint1);
+    if (derLevel < 1)
+    {
+      resize();
+      return;
+    }
     var masterLastPoint2 = curves[masterId].points[curves[masterId].points.length - 2];
+    //r1 = m/n
+    var ratio1 = curves[masterId].points.length / curves[slaveId].points.length;
+    //Q1 = (r1 + 1)Pm-1 - (r1)Pm-2
+    curves[slaveId].points[1].x = (1 + ratio1) * masterLastPoint1.x - ratio1 * masterLastPoint2.x;
+    curves[slaveId].points[1].y = (1 + ratio1) * masterLastPoint1.y - ratio1 * masterLastPoint2.y;
 
-    var lastEdgeOfMaster = calcDistanceSquare(masterLastPoint1, masterLastPoint2);
-    var firstEdgeOfSlave = calcDistanceSquare(masterLastPoint1, curves[slaveId].points[1]);
-
-    //correct first edge of the slave curve
-    var ratio = 1 + Math.sqrt(firstEdgeOfSlave / lastEdgeOfMaster);
-    curves[slaveId].points[1].x = (1 - ratio) * masterLastPoint2.x + ratio * masterLastPoint1.x;
-    curves[slaveId].points[1].y = (1 - ratio) * masterLastPoint2.y + ratio * masterLastPoint1.y;
-
-    //merge two curves into one
-    if (makeSingle)
+    if (derLevel < 2)
     {
-      //remove last point of master
-      curves[masterId].points.pop();
-      //remove first point of slave
-      curves[slaveId].points.splice(0, 1);
-      curves[masterId].points = curves[masterId].points.concat(curves[slaveId].points);
-
-      //remove slave curve
-      curves.splice(slaveId, 1);
-      if (masterId > slaveId)
-      {
-        currentCurveId--;
-      }
-      updateCurvesList();
+      resize();
+      return;
     }
-    else
-    {
-      //Make first point of slave the last of masterId
-      curves[slaveId].points[0] = curves[masterId].points[curves[masterId].points.length - 1];
-    }
+    var masterLastPoint3 = curves[masterId].points[curves[masterId].points.length - 3];
+    //r2 = r1(m-1)/(n-1)
+    var ratio2 = ratio1 * (curves[masterId].points.length - 1) / (curves[slaveId].points.length - 1);
+    //Q2 = (r2+2r1+1)Pm-1 - 2(r2 + r1)Pm-2 + (r2)P-3
+    curves[slaveId].points[2].x = (ratio2 + 2 * ratio1 + 1) * masterLastPoint1.x;
+    curves[slaveId].points[2].x -= 2 * (ratio2 + ratio1) * masterLastPoint2.x;
+    curves[slaveId].points[2].x += ratio2 * masterLastPoint3.x;
+    curves[slaveId].points[2].y = (ratio2 + 2 * ratio1 + 1) * masterLastPoint1.y;
+    curves[slaveId].points[2].y -= 2 * (ratio2 + ratio1) * masterLastPoint2.y;
+    curves[slaveId].points[2].y += ratio2 * masterLastPoint3.y;
+    //Make first point of slave the last of masterId
     resize();
   }
 
