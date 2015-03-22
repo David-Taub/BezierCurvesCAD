@@ -194,6 +194,7 @@ function main(scale, ptX, ptY)
     }
   }
 
+  //fire up event handlers after keyboard press event
   function onKeyUp(ev)
   {
     switch(ev.keyCode)
@@ -248,9 +249,10 @@ function main(scale, ptX, ptY)
         break;
     }
   }
-  //If deCasteljauRatio is in the current curve range, make two curves
-  //with the exact same shape where their meeting point is on the original
-  //curve at the deCasteljau as t parameter.
+
+  //If deCasteljauRatio is in the current curve range, make the current curve
+  // into two curves with the exact same shape as the current curve, where their
+  // meeting point is on the original curve at the deCasteljau as t parameter.
   function splitCurve()
   {
     //check if t value is in range
@@ -308,7 +310,6 @@ function main(scale, ptX, ptY)
   }
 
   //Add point as last in polygon, coordinates are between 0 to 1
-  //e.g. addPoint(0.3, 0.5)
   //If isNewCurve is true create a new curve and add the point to it.
   //Otherwise adds the point to the current curve.
   function addPoint(newPoint, isNewCurve)
@@ -330,6 +331,7 @@ function main(scale, ptX, ptY)
   }
 
   //Delete last point in polygon of the current curve.
+  //remove curve if it has no points
   function deletePoint()
   {
     pushToHistory();
