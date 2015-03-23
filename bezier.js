@@ -201,7 +201,7 @@ function main(scale, ptX, ptY)
     {
       //DELETE
       case 46:
-        deletePoint();
+        deletePoint(ev.ctrlKey);
         break;
       //S
       case 83:
@@ -256,7 +256,8 @@ function main(scale, ptX, ptY)
   function splitCurve()
   {
     //check if t value is in range
-    if (deCasteljauRatio <= curves[currentCurveId].startT ||
+    if (curves.length == 0 ||
+        deCasteljauRatio <= curves[currentCurveId].startT ||
         deCasteljauRatio >= curves[currentCurveId].endT)
     {
       return;
@@ -314,7 +315,7 @@ function main(scale, ptX, ptY)
   //Otherwise adds the point to the current curve.
   function addPoint(newPoint, isNewCurve)
   {
-    if (!isNewCurve)
+    if (!isNewCurve && curves.length > 0)
     {
       curves[currentCurveId].points.push(newPoint);
       resize();
@@ -332,15 +333,22 @@ function main(scale, ptX, ptY)
 
   //Delete last point in polygon of the current curve.
   //remove curve if it has no points
-  function deletePoint()
+  function deletePoint(deleteCurve)
   {
+    if (curves.length == 0)
+    {
+      return;
+    }
     pushToHistory();
     curves[currentCurveId].points.pop();
     //curve is empty, delete it
-    if (curves[currentCurveId].points.length == 0)
+    if (deleteCurve || curves[currentCurveId].points.length == 0)
     {
       curves.splice(currentCurveId, 1);
-      currentCurveId--;
+      if (currentCurveId > 0)
+      {
+        currentCurveId--;
+      }
       updateCurvesList();
     }
     resize();
@@ -377,6 +385,10 @@ function main(scale, ptX, ptY)
   //derLevel = 2 -> the curves 2nd derivatives are continuous
   function mergeCurves(derLevel)
   {
+    if (curves.length == 0)
+    {
+      return;
+    }
     pushToHistory();
     var slaveId = findClosestCurve();
     var masterId = currentCurveId;
@@ -422,7 +434,7 @@ function main(scale, ptX, ptY)
     curves[slaveId].points[2].y = (ratio2 + 2 * ratio1 + 1) * masterLastPoint1.y;
     curves[slaveId].points[2].y -= 2 * (ratio2 + ratio1) * masterLastPoint2.y;
     curves[slaveId].points[2].y += ratio2 * masterLastPoint3.y;
-    //Make first point of slave the last of masterId
+
     resize();
   }
 
@@ -461,6 +473,10 @@ function main(scale, ptX, ptY)
   //Draws the Bernstein Polynomials of current curve
   function drawBernsteinPolynomial()
   {
+    if (curves.length == 0)
+    {
+      return;
+    }
     //Setup
     var step = doublePlotWidth / (width - doublePlotWidth)
     var t = step;
@@ -647,6 +663,10 @@ function main(scale, ptX, ptY)
 
   function drag(ev)
   {
+    if (curves.length == 0)
+    {
+      return;
+    }
     //No point is chosen
     if (dragId < 0) return;
     curves[currentCurveId].points[dragId] = getXY(ev);
@@ -669,6 +689,11 @@ function main(scale, ptX, ptY)
       return;
     }
 
+    if (curves.length == 0)
+    {
+      return;
+    }
+
     //Get closest point to the click
     var minimumDistance = width, distanceSquare, xDelta, yDelta;
     for (var i = 0; i < curves[currentCurveId].points.length; i++)
@@ -687,6 +712,7 @@ function main(scale, ptX, ptY)
 
   function stopDrag(ev)
   {
+
     dragId = -1;
     ev.preventDefault();
   }
