@@ -1,11 +1,22 @@
 $( document ).ready(function()
 {
-    var b1 = new main( .4, [ .1, .9, .9, .5], [.1, .9, .1, .1])
+  //Random points
+  var numberOfPoints = Math.floor(Math.random() * 10 + 3)
+  points = []
+  for (var i = 0; i < numberOfPoints; i++)
+  {
+    points.push(
+    {
+      x : Math.random(),
+      y : Math.random()
+    })
+  }
 
+  main( .4, points)
 })
 
 
-function main(scale, ptX, ptY)
+function main(scale, points)
 {
   var HISTORY_MAX_SIZE = 50
   var history = [], forwardHistory = []
@@ -20,16 +31,9 @@ function main(scale, ptX, ptY)
   function init()
   {
     var curve = {
-      points : [],
+      points : points,
       startT : 0,
       endT : 1
-    }
-    for (var i = 0; i < ptX.length; i++)
-    {
-      curve.points[i] = {
-        x : ptX[i],
-        y : ptY[i]
-      }
     }
     curves = [curve]
 
