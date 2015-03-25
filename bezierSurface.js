@@ -1,10 +1,11 @@
 $( document ).ready(function()
 {
-  main( .4, [{x:.5,y:.5}])
+  main( .4, [[[{x:.5,y:.5},{x:.5,y:.6}],[{x:.6,y:.5},{x:.6,y:.6}]],
+             [[{x:.2,y:.2},{x:.2,y:.4}],[{x:.4,y:.2},{x:.4,y:.4}]]])
 })
 
 
-function main(scale, points)
+function main(scale, inputSurfaces)
 {
   var HISTORY_MAX_SIZE = 50
   var history = [], forwardHistory = []
@@ -21,7 +22,7 @@ function main(scale, points)
 
   function init()
   {
-    surfaces = [[points]]
+    surfaces = inputSurfaces
 
     updateSurfacesList()
     $("#slider").value = $("#slider").max
@@ -79,16 +80,21 @@ function main(scale, points)
   function pushToHistory()
   {
     //Deep copy
-    surfacesCopy = []
-    for (var i = 0; i < surfaces.length; i++)
+    var surfacesCopy = []
+    for (var k = 0; k < surfaces.length; k++)
     {
-      curveCopy = []
-      for (var j = 0; j < surfaces[i].length; j++)
+      var surfaceCopy = []
+      for (var i = 0; i < surfaces[k].length; i++)
       {
-        curveCopy.push($.extend({}, surfaces[i][j]))
+        var curveCopy = []
+        for (var j = 0; j < surfaces[k][i].length; j++)
+        {
+          curveCopy.push($.extend({}, surfaces[k][i][j]))
+        }
+        surfaceCopy.push(curveCopy)
       }
-      surfacesCopy.push(curveCopy)
-    }
+      surfacesCopy.push(surfaceCopy)
+    };
 
     history.push(surfacesCopy)
     //Keep history size limited
@@ -97,6 +103,22 @@ function main(scale, points)
       history.shift()
     }
     forwardHistory = []
+  }
+// meeting point is on the original curve at the deCasteljau as t parameter.
+  function splitCurve(curve, t)
+  {
+    var skeletonPoints = deCasteljau(curve, t)
+    //build two curves
+    var postfixCurve = []
+    var prefixCurve = []
+    //add points to new curves
+    for (var i = 0; i < curve.length; i++)
+    {
+      prefixCurve.push(skeletonPoints[i][0])
+      postfixCurve.push(skeletonPoints[curve.length - i - 1][i])
+    }
+    //add new curves to the curves list
+    return [prefixCurve, postfixCurve]
   }
 
   function updateSurfacesList()
@@ -183,7 +205,7 @@ function main(scale, points)
         break
       //S
       case 83:
-        splitSurface(pointOnSurface.x , pointOnSurface.y)
+        splitSurfaceByPoint()
         break
       //Z
       case 90:
@@ -211,41 +233,48 @@ function main(scale, points)
         break
     }
   }
-  //If deCasteljauRatio is in the current curve range, make the current curve
-  // into two surfaces with the exact same shape as the current curve, where their
-  // meeting point is on the original curve at the deCasteljau as t parameter.
-  function splitSurface(u, v)
+
+  function splitSurfaceByPoint()
   {
-    //check if t value is in range
-    if (surfaces.length == 0 || surfaces[currentSurfaceId].length == 0)
+    if (pointOnSurface == -1)
     {
       return
     }
     pushToHistory()
-    var skeletonPoints = deCasteljau(surfaces[currentSurfaceId].points, deCasteljauRatio)
-    //build two surfaces
-    var postfixCurve = {
-      points : [],
-      startT : 0,
-      endT : (surfaces[currentSurfaceId].endT - deCasteljauRatio) / (1 - deCasteljauRatio)
-    }
-    var prefixCurve = {
-      points : [],
-      startT : surfaces[currentSurfaceId].startT / deCasteljauRatio,
-      endT : 1
-    }
-    //add points to new surfaces
-    for (var i = 0; i < surfaces[currentSurfaceId].points.length; i++)
-    {
-      prefixCurve.points.push(skeletonPoints[i][0])
-      postfixCurve.points.push(skeletonPoints[surfaces[currentSurfaceId].points.length - i - 1][i])
-    }
-    //add new surfaces to the surfaces list
-    surfaces[currentSurfaceId] = prefixCurve
-    surfaces.push(postfixCurve)
+    surface = surfaces[currentSurfaceId]
+    var newSurfaces = splitSurface(surface, pointOnSurface.x, pointOnSurface.y)
+    surfaces.splice(currentSurfaceId, 1, newSurfaces[0], newSurfaces[1], newSurfaces[2], newSurfaces[3])
 
     updateSurfacesList()
     resize()
+  }
+  //If deCasteljauRatio is in the current curve range, make the current curve
+  // into two surfaces with the exact same shape as the current curve, where their
+  // meeting point is on the original curve at the deCasteljau as t parameter.
+  function splitSurface(surface, u, v)
+  {
+    var semiSurfaces = [[], []]
+    for (var i = 0; i < surface.length; i++)
+    {
+      var subCurves = splitCurve(surface[i], u)
+      semiSurfaces[0].push(subCurves[0])
+      semiSurfaces[1].push(subCurves[1])
+    }
+    var quadSurfaces = [[], [], [], []]
+    for (var i = 0; i < semiSurfaces[0][0].length; i++)
+    {
+      var subCurves = splitCurve(getColumn(semiSurfaces[0], i), v)
+      quadSurfaces[0].push(subCurves[0])
+      quadSurfaces[1].push(subCurves[1])
+    }
+
+    for (var i = 0; i < semiSurfaces[1][0].length; i++)
+    {
+      var subCurves = splitCurve(getColumn(semiSurfaces[1], i), v)
+      quadSurfaces[2].push(subCurves[0])
+      quadSurfaces[3].push(subCurves[1])
+    }
+    return quadSurfaces
   }
 
   function transposeSurface(surface)
@@ -253,7 +282,7 @@ function main(scale, points)
     var transposedSurface = []
     for (var i = 0; i < surface[0].length; i++)
     {
-      transposedSurface.push(getRow(surface, i))
+      transposedSurface.push(getColumn(surface, i))
     }
     return transposedSurface
   }
@@ -263,6 +292,15 @@ function main(scale, points)
   //Otherwise adds the point to the current curve.
   function addPoint(clickPoint, addRow)
   {
+    //handle empty canvas
+    if (surfaces.length == 0)
+    {
+      surfaces = [[[clickPoint]]]
+      currentSurfaceId = 0
+      updateSurfacesList()
+      resize()
+      return
+    }
     surface = surfaces[currentSurfaceId]
     if (addRow)
     {
@@ -299,7 +337,6 @@ function main(scale, points)
     {
       surface = transposeSurface(surface)
     }
-
     surfaces[currentSurfaceId] = surface
     resize()
     return
@@ -326,16 +363,30 @@ function main(scale, points)
         surfaces[currentSurfaceId][i].pop()
       }
     }
+    if (surfaces[currentSurfaceId].length == 0)
+    {
+      surfaces.splice(currentSurfaceId, 1)
+      if (currentSurfaceId > 0)
+      {
+        currentSurfaceId--
+      }
+      updateSurfacesList()
+    }
 
     resize()
   }
-  function drawParameterGrid(points)
+  function drawParameterGrid()
   {
-    for (var u = 0; u <= 1; u += 1 / (points.length - 1))
+    if (surfaces.length == 0 || surfaces[currentSurfaceId].length == 0 )
+    {
+      return
+    }
+
+    for (var u = 0; u <= 1; u += 1 / (surfaces[currentSurfaceId].length - 1))
     {
       drawParameterLine(u, true, "#f00000");
     }
-    for (var v = 0; v <= 1; v += 1 / (points[0].length - 1))
+    for (var v = 0; v <= 1; v += 1 / (surfaces[currentSurfaceId][0].length - 1))
     {
       drawParameterLine(v, false, "#f00000");
     }
@@ -403,14 +454,19 @@ function main(scale, points)
 
   function drawSurfaces()
   {
+    physicalCtx.clearRect(0,0, width, height)
     while(isExceedingCanvas())
     {
       correctZoom()
     }
     for (var i = 0; i < surfaces.length; i++)
     {
-      drawSurface(surfaces[i], i == currentSurfaceId)
+      if (i != currentSurfaceId)
+      {
+        drawSurface(surfaces[i], false)
+      }
     }
+    drawSurface(surfaces[currentSurfaceId], true)
     if (pointOnSurface != -1)
     {
       drawParameterLine(pointOnSurface.x, false, "#f000f0")
@@ -426,7 +482,6 @@ function main(scale, points)
     {
       return
     }
-    physicalCtx.clearRect(0,0, width, height)
     surface = convertToCanvasSpace(surface)
 
     //disabled colors
@@ -440,7 +495,7 @@ function main(scale, points)
     }
     for (var i = 0; i < surface[0].length; i++)
     {
-      drawPolygon(getRow(surface, i), plotWidth, lineColor, dotColor)
+      drawPolygon(getColumn(surface, i), plotWidth, lineColor, dotColor)
     }
     for (var i = 0; i < surface.length; i++)
     {
@@ -552,18 +607,13 @@ function main(scale, points)
         }
         nextStepSkeleton.push(nextStepSkeletonRow)
       }
-        //console.log(JSON.stringify(skeletonPoints, null, 2))
       skeletonPoints.push(nextStepSkeleton)
-      if (u == 0 & v == 0)
-      {
-        console.log(surface.length, skeletonPoints.length, k)
-      }
     }
     //Last decasteljau steps, now it's a curve - not a surface
     //If more rows than columns in given points matrix
     if (skeletonPoints[skeletonPoints.length - 1].length > 1)
     {
-      var skeletonCurve = deCasteljau(getRow(skeletonPoints.pop(), 0), u)
+      var skeletonCurve = deCasteljau(getColumn(skeletonPoints.pop(), 0), u)
       for (var i = 0; i < skeletonCurve.length; i++)
       {
         skeletonPoints.push([skeletonCurve[i]])
@@ -584,7 +634,7 @@ function main(scale, points)
     return skeletonPoints
   }
 
-  function getRow(matrix, index)
+  function getColumn(matrix, index)
   {
     row = []
     for (var i = 0; i < matrix.length; i++)
@@ -641,7 +691,7 @@ function main(scale, points)
     parameterCanvas.width = width
     parameterCanvas.height = height
     drawSurfaces()
-    drawParameterGrid(surfaces[currentSurfaceId])
+    drawParameterGrid()
   }
 
 
