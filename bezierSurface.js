@@ -10,7 +10,9 @@ function main(scale, points)
   var history = [], forwardHistory = []
   var timer, deCasteljauRatio = 1
   var curves
-  var physicalCanvas, physicalCtx, width, height, height1, plotWidth, doublePlotWidth,  dragId = -1
+  var physicalCanvas, physicalCtx
+  var parameterCanvas, parameterCtx
+  var width, height, height1, plotWidth, doublePlotWidth,  dragId = -1
   var iColor = ["#f00000","#00f000","#0000f0","#00f0f0","#f0f000","#f000f0","#090909"]
   init()
   resize()
@@ -22,8 +24,11 @@ function main(scale, points)
     $("#slider").value = $("#slider").max
     physicalCanvas = $("#physicalCanvas").get(0)
     physicalCtx = physicalCanvas.getContext("2d")
+    parameterCanvas = $("#parameterCanvas").get(0)
+    parameterCtx = parameterCanvas.getContext("2d")
     $("#fileInput").change(loadCurves)
     $("#downloadButton").click(saveCurves)
+    $("#parameterCanvas").mousemove(mouseMoveParameter)
     $("#physicalCanvas").mousemove(drag)
     $("#physicalCanvas").mousedown(startDrag)
     $("#physicalCanvas").mouseup(stopDrag)
@@ -55,7 +60,6 @@ function main(scale, points)
     curves = forwardHistory.pop()
     resize()
   }
-
 
   function pushToHistory()
   {
@@ -215,6 +219,35 @@ function main(scale, points)
     }
     resize()
   }
+  function drawParameterGrid(points)
+  {
+    for (var u = 0; u <= 1; u += 1 / (points.length - 1))
+    {
+      drawParameterLine(u, true, "#f00000");
+    }
+    for (var v = 0; v <= 1; v += 1 / (points[0].length - 1))
+    {
+      drawParameterLine(v, false, "#f00000");
+    }
+  }
+
+  function drawParameterLine(value, isHorizontal, lineColor)
+  {
+    parameterCtx.lineWidth = plotWidth
+    parameterCtx.strokeStyle = lineColor
+    parameterCtx.beginPath()
+    if (isHorizontal)
+    {
+      parameterCtx.moveTo(0, height1 * (1 - value))
+      parameterCtx.lineTo(width, height1 * (1 - value))
+    }
+    else
+    {
+      parameterCtx.moveTo(width * value, 0)
+      parameterCtx.lineTo(width * value, height)
+    }
+    parameterCtx.stroke()
+  }
 
   //Add to canvas lines and dots of given polygon
   // (polygon is open, last and first dots are not drawn)
@@ -265,7 +298,6 @@ function main(scale, points)
       return
     }
     physicalCtx.clearRect(0,0, width, height)
-    var step = 1 / width
     var points = convertToCanvasSpace(points)
 
     //disabled colors
@@ -286,50 +318,54 @@ function main(scale, points)
       drawPolygon(points[i], plotWidth, lineColor, dotColor)
     }
     //plot curve
-    physicalCtx.lineWidth = doublePlotWidth
+    var curveColor = "#a04040"
+    if (isCurrent)
+    {
+      curveColor = "#f00000"
+    }
     for (var u = 0; u <= 1; u += 1 / (points.length - 1))
     {
-      var lastStep = tensor(points, u, 0)
-      var curveColor = "#a04040"
-      if (isCurrent)
-      {
-        curveColor = "#f00000"
-      }
-      //Draw Curve step
-      for (var v = 0; v < 1; v += step)
-      {
-        curveStep = tensor(points, u, v)
-        physicalCtx.strokeStyle = curveColor
-        physicalCtx.beginPath()
-        physicalCtx.moveTo(lastStep.x, height1 - lastStep.y)
-        physicalCtx.lineTo(curveStep.x, height1 - curveStep.y)
-        physicalCtx.stroke()
-        lastStep = curveStep
-      }
+      plotCurveOnSurface(points, u, true, curveColor);
     }
 
     for (var v = 0; v <= 1; v += 1 / (points[0].length - 1))
     {
-      var lastStep = tensor(points, 0, v)
-      var curveColor = "#a04040"
-      if (isCurrent)
-      {
-        curveColor = "#f00000"
-      }
-      //Draw Curve step
-      for (var u = 0; u < 1; u += step)
-      {
-        curveStep = tensor(points, u, v)
-        physicalCtx.strokeStyle = curveColor
-        physicalCtx.beginPath()
-        physicalCtx.moveTo(lastStep.x, height1 - lastStep.y)
-        physicalCtx.lineTo(curveStep.x, height1 - curveStep.y)
-        physicalCtx.stroke()
-        lastStep = curveStep
-      }
+      plotCurveOnSurface(points, v, false, curveColor);
     }
   }
+  function plotCurveOnSurface(points, value, isHorizontal, curveColor)
+  {
+    physicalCtx.lineWidth = doublePlotWidth
+    var step = 1 / width
+    var lastStep
+    if (isHorizontal)
+    {
+      lastStep = tensor(points, value, 0)
+    }
+    else
+    {
+      lastStep = tensor(points, 0, value)
+    }
 
+    //Draw Curve step
+    for (var t = 0; t < 1; t += step)
+    {
+      if (isHorizontal)
+      {
+        curveStep = tensor(points, value, t)
+      }
+      else
+      {
+        curveStep = tensor(points, t, value)
+      }
+      physicalCtx.strokeStyle = curveColor
+      physicalCtx.beginPath()
+      physicalCtx.moveTo(lastStep.x, height1 - lastStep.y)
+      physicalCtx.lineTo(curveStep.x, height1 - curveStep.y)
+      physicalCtx.stroke()
+      lastStep = curveStep
+    }
+  }
   //Receive points of control polygon and the t parameter of the Bezier function
   //Return array of arrays of the DeCasteljau points by order:
   //0 - the control points (n points)
@@ -421,7 +457,10 @@ function main(scale, points)
     doublePlotWidth = 2 * plotWidth
     physicalCanvas.width = width
     physicalCanvas.height = height
+    parameterCanvas.width = width
+    parameterCanvas.height = height
     drawSurface(curves, true)
+    drawParameterGrid(curves)
   }
 
 
@@ -433,7 +472,7 @@ function main(scale, points)
     }
     //No point is chosen
     if (dragId == -1) return
-    curves[dragId.i][dragId.j] = getXY(ev)
+    curves[dragId.i][dragId.j] = getXY(ev, physicalCanvas)
     drawSurface(curves, true)
     ev.preventDefault()
   }
@@ -446,7 +485,7 @@ function main(scale, points)
   function startDrag(ev)
   {
     pushToHistory()
-    var clickCoordinates = getXY(ev)
+    var clickCoordinates = getXY(ev, physicalCanvas)
     if (ev.ctrlKey)
     {
       addPoint(clickCoordinates, ev.shiftKey)
@@ -487,14 +526,24 @@ function main(scale, points)
     ev.preventDefault()
   }
 
+  function mouseMoveParameter(ev)
+  {
+    point = getXY(ev, parameterCanvas)
+    resize()
+    drawParameterLine(point.x, false, "#00f000")
+    drawParameterLine(point.y, true, "#00f000")
+    plotCurveOnSurface(convertToCanvasSpace(curves), point.x, false, "#00f000");
+    plotCurveOnSurface(convertToCanvasSpace(curves), point.y, true, "#00f000");
+  }
+
   //Get x,y between 0 to 1 of given click event
-  function getXY(ev)
+  function getXY(ev, canvas)
   {
     if (!ev.clientX)
     {
       ev = ev.touches[0]
     }
-    var rect = physicalCanvas.getBoundingClientRect()
+    var rect = canvas.getBoundingClientRect()
     return {
       x : (ev.clientX - rect.left) / width,
       y : (height1 - (ev.clientY - rect.top)) / height
