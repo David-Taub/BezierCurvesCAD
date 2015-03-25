@@ -1,13 +1,19 @@
 $( document ).ready(function()
 {
-  main( .4, [[[{x:.5,y:.5},{x:.5,y:.6}],[{x:.6,y:.5},{x:.6,y:.6}]],
-             [[{x:.2,y:.2},{x:.2,y:.4}],[{x:.4,y:.2},{x:.4,y:.4}]]])
+  var surface = {
+    "name" : "1",
+    "points" : [[{"x":0.13,"y":0.55},{"x":0.25,"y":0.50},{"x":0.19,"y":0.38},{"x":0.06,"y":0.37}],
+                [{"x":0.53,"y":0.84},{"x":0.45,"y":0.52},{"x":0.36,"y":0.43},{"x":0.19,"y":0.14}],
+                [{"x":0.86,"y":0.43},{"x":0.72,"y":0.34},{"x":0.60,"y":0.17},{"x":0.77,"y":0.14}]]
+              }
+  main( .4, [surface])
 })
 
 
 function main(scale, inputSurfaces)
 {
   var HISTORY_MAX_SIZE = 50
+  var LINES_IN_GRID = 6
   var history = [], forwardHistory = []
   var timer, deCasteljauRatio = 1
   var surfaces
@@ -18,6 +24,7 @@ function main(scale, inputSurfaces)
   var width, height, height1, plotWidth, doublePlotWidth,  dragId = -1
   var iColor = ["#f00000","#00f000","#0000f0","#00f0f0","#f0f000","#f000f0","#090909"]
   init()
+
   resize()
 
   function init()
@@ -34,6 +41,7 @@ function main(scale, inputSurfaces)
     $("#downloadButton").click(saveSurfaces)
     $("#surfacesList").change(changeCurrentSurface)
     $("#parameterCanvas").mousemove(mouseMoveParameter)
+    $("#parameterCanvas").mouseleave(resize)
     $("#parameterCanvas").mouseup(mouseUpParameter)
     $("#physicalCanvas").mousemove(drag)
     $("#physicalCanvas").mousedown(startDrag)
@@ -83,15 +91,18 @@ function main(scale, inputSurfaces)
     var surfacesCopy = []
     for (var k = 0; k < surfaces.length; k++)
     {
-      var surfaceCopy = []
-      for (var i = 0; i < surfaces[k].length; i++)
+      var surfaceCopy = {
+        name : surfaces[k].name,
+        points : []
+      }
+      for (var i = 0; i < surfaces[k].points.length; i++)
       {
         var curveCopy = []
-        for (var j = 0; j < surfaces[k][i].length; j++)
+        for (var j = 0; j < surfaces[k].points[i].length; j++)
         {
-          curveCopy.push($.extend({}, surfaces[k][i][j]))
+          curveCopy.push($.extend({}, surfaces[k].points[i][j]))
         }
-        surfaceCopy.push(curveCopy)
+        surfaceCopy.points.push(curveCopy)
       }
       surfacesCopy.push(surfaceCopy)
     };
@@ -104,7 +115,8 @@ function main(scale, inputSurfaces)
     }
     forwardHistory = []
   }
-// meeting point is on the original curve at the deCasteljau as t parameter.
+
+  // meeting point is on the original curve at the deCasteljau as t parameter.
   function splitCurve(curve, t)
   {
     var skeletonPoints = deCasteljau(curve, t)
@@ -125,15 +137,15 @@ function main(scale, inputSurfaces)
   {
     //remake list element in HTML
     $('#surfacesList').empty()
-    for (var i=1; i <= surfaces.length; i++)
+    for (var i=0; i < surfaces.length; i++)
     {
       if (i==1)
       {
-        $("#surfacesList").append($("<option selected/>").text(i))
+        $("#surfacesList").append($("<option selected/>").text(surfaces[i].name))
       }
       else
       {
-        $("#surfacesList").append($("<option />").text(i))
+        $("#surfacesList").append($("<option />").text(surfaces[i].name))
       }
     }
 
@@ -254,35 +266,54 @@ function main(scale, inputSurfaces)
   function splitSurface(surface, u, v)
   {
     var semiSurfaces = [[], []]
-    for (var i = 0; i < surface.length; i++)
+    for (var i = 0; i < surface.points.length; i++)
     {
-      var subCurves = splitCurve(surface[i], u)
+      var subCurves = splitCurve(surface.points[i], u)
       semiSurfaces[0].push(subCurves[0])
       semiSurfaces[1].push(subCurves[1])
     }
-    var quadSurfaces = [[], [], [], []]
+    var quadSurfaces = [{
+                        name : surface.name + ".1",
+                        points : []
+                      },
+                      {
+                        name : surface.name + ".2",
+                        points : []
+                      },
+                      {
+                        name : surface.name + ".3",
+                        points : []
+                      },
+                      {
+                        name : surface.name + ".4",
+                        points : []
+                      }]
+
     for (var i = 0; i < semiSurfaces[0][0].length; i++)
     {
       var subCurves = splitCurve(getColumn(semiSurfaces[0], i), v)
-      quadSurfaces[0].push(subCurves[0])
-      quadSurfaces[1].push(subCurves[1])
+      quadSurfaces[0].points.push(subCurves[0])
+      quadSurfaces[1].points.push(subCurves[1])
     }
 
     for (var i = 0; i < semiSurfaces[1][0].length; i++)
     {
       var subCurves = splitCurve(getColumn(semiSurfaces[1], i), v)
-      quadSurfaces[2].push(subCurves[0])
-      quadSurfaces[3].push(subCurves[1])
+      quadSurfaces[2].points.push(subCurves[0])
+      quadSurfaces[3].points.push(subCurves[1])
     }
     return quadSurfaces
   }
 
   function transposeSurface(surface)
   {
-    var transposedSurface = []
-    for (var i = 0; i < surface[0].length; i++)
+    var transposedSurface = {
+      name : surface.name,
+      points : []
+    }
+    for (var i = 0; i < surface.points[0].length; i++)
     {
-      transposedSurface.push(getColumn(surface, i))
+      transposedSurface.points.push(getColumn(surface.points, i))
     }
     return transposedSurface
   }
@@ -306,14 +337,14 @@ function main(scale, inputSurfaces)
     {
       surface = transposeSurface(surface)
     }
-    var pointsLength = surface.length
+    var pointsLength = surface.points.length
 
     //Find closest point on last column
     var minimumDistance = 10
     var minimumIndex = -1
-    for(var i = 0; i < surface[0].length; i++)
+    for(var i = 0; i < surface.points[0].length; i++)
     {
-      var distance = calcDistanceSquare(clickPoint, surface[pointsLength - 1][i])
+      var distance = calcDistanceSquare(clickPoint, surface.points[pointsLength - 1][i])
       if (distance < minimumDistance)
       {
         minimumDistance = distance
@@ -321,18 +352,18 @@ function main(scale, inputSurfaces)
       }
     }
     //get distance from closest point
-    var diffY = clickPoint.y - surface[pointsLength - 1][minimumIndex].y
-    var diffX = clickPoint.x - surface[pointsLength - 1][minimumIndex].x
+    var diffY = clickPoint.y - surface.points[pointsLength - 1][minimumIndex].y
+    var diffX = clickPoint.x - surface.points[pointsLength - 1][minimumIndex].x
     //add column
     var newColumn = []
-    for(var i = 0; i < surface[0].length; i++)
+    for(var i = 0; i < surface.points[0].length; i++)
     {
       newColumn.push({
-        x : surface[pointsLength - 1][i].x + diffX,
-        y : surface[pointsLength - 1][i].y + diffY
+        x : surface.points[pointsLength - 1][i].x + diffX,
+        y : surface.points[pointsLength - 1][i].y + diffY
       })
     }
-    surface.push(newColumn)
+    surface.points.push(newColumn)
     if (addRow)
     {
       surface = transposeSurface(surface)
@@ -354,16 +385,17 @@ function main(scale, inputSurfaces)
     pushToHistory()
     if (!deleteRow)
     {
-      surfaces[currentSurfaceId].pop()
+      surfaces[currentSurfaceId].points.pop()
     }
     else
     {
-      for (var i = 0; i < surfaces[currentSurfaceId].length; i++)
+      for (var i = 0; i < surfaces[currentSurfaceId].points.length; i++)
       {
-        surfaces[currentSurfaceId][i].pop()
+        surfaces[currentSurfaceId].points[i].pop()
       }
     }
-    if (surfaces[currentSurfaceId].length == 0)
+    if (surfaces[currentSurfaceId].points.length == 0 ||
+        surfaces[currentSurfaceId].points[0].length == 0)
     {
       surfaces.splice(currentSurfaceId, 1)
       if (currentSurfaceId > 0)
@@ -377,16 +409,17 @@ function main(scale, inputSurfaces)
   }
   function drawParameterGrid()
   {
-    if (surfaces.length == 0 || surfaces[currentSurfaceId].length == 0 )
+    if (surfaces.length == 0 || surfaces[currentSurfaceId].points.length == 0 )
     {
       return
     }
 
-    for (var u = 0; u <= 1; u += 1 / (surfaces[currentSurfaceId].length - 1))
+    //for (var u = 0; u <= 1; u += 1 / (surfaces[currentSurfaceId].points.length - 1))
+    for (var u = 0; u <= 1; u += 1 / LINES_IN_GRID)
     {
       drawParameterLine(u, true, "#f00000");
     }
-    for (var v = 0; v <= 1; v += 1 / (surfaces[currentSurfaceId][0].length - 1))
+    for (var v = 0; v <= 1; v += 1 / LINES_IN_GRID)
     {
       drawParameterLine(v, false, "#f00000");
     }
@@ -436,18 +469,22 @@ function main(scale, inputSurfaces)
 
   function convertToCanvasSpace(surface)
   {
-    var newSurface = []
-    for (var i = 0; i < surface.length; i++)
+    var newSurface =
+    {
+      name : surface.name,
+      points : []
+    }
+    for (var i = 0; i < surface.points.length; i++)
     {
       var newRow = []
-      for (var j = 0; j < surface[0].length; j++)
+      for (var j = 0; j < surface.points[0].length; j++)
       {
         newRow.push({
-          x : surface[i][j].x * width,
-          y : surface[i][j].y * height1
+          x : surface.points[i][j].x * width,
+          y : surface.points[i][j].y * height1
         })
       }
-      newSurface.push(newRow)
+      newSurface.points.push(newRow)
     }
     return newSurface
   }
@@ -478,7 +515,8 @@ function main(scale, inputSurfaces)
 
   function drawSurface(surface, isCurrent)
   {
-    if (surface.length == 0 || surface[0].length == 0)
+
+    if (surface.points.length == 0 || surface.points[0].length == 0)
     {
       return
     }
@@ -493,13 +531,13 @@ function main(scale, inputSurfaces)
       lineColor = "#0000f5"
       dotColor = "#0000f0"
     }
-    for (var i = 0; i < surface[0].length; i++)
+    for (var i = 0; i < surface.points[0].length; i++)
     {
-      drawPolygon(getColumn(surface, i), plotWidth, lineColor, dotColor)
+      drawPolygon(getColumn(surface.points, i), plotWidth, lineColor, dotColor)
     }
-    for (var i = 0; i < surface.length; i++)
+    for (var i = 0; i < surface.points.length; i++)
     {
-      drawPolygon(surface[i], plotWidth, lineColor, dotColor)
+      drawPolygon(surface.points[i], plotWidth, lineColor, dotColor)
     }
     //plot curve
     var curveColor = "#a04040"
@@ -507,12 +545,14 @@ function main(scale, inputSurfaces)
     {
       curveColor = "#f00000"
     }
-    for (var u = 0; u <= 1; u += 1 / (surface.length - 1))
+    //for (var u = 0; u <= 1; u += 1 / (surface.points.length - 1))
+    for (var u = 0; u <= 1; u += 1 / LINES_IN_GRID)
     {
       plotCurveOnSurface(surface, u, true, curveColor);
     }
 
-    for (var v = 0; v <= 1; v += 1 / (surface[0].length - 1))
+    //for (var v = 0; v <= 1; v += 1 / (surface.points[0].length - 1))
+    for (var v = 0; v <= 1; v += 1 / LINES_IN_GRID)
     {
       plotCurveOnSurface(surface, v, false, curveColor);
     }
@@ -584,8 +624,8 @@ function main(scale, inputSurfaces)
   function tensor(surface, u, v)
   {
     //De Casteljau with 2 parameters
-    var skeletonPoints = [surface]
-    for (var k = 0; k < Math.min(surface.length, surface[0].length) - 1; k++)
+    var skeletonPoints = [surface.points]
+    for (var k = 0; k < Math.min(surface.points.length, surface.points[0].length) - 1; k++)
     {
       //De Casteljau iteration
       nextStepSkeleton = []
@@ -648,12 +688,12 @@ function main(scale, inputSurfaces)
   {
     for (var k = 0; k < surfaces.length; k++)
     {
-      for (var i = 0; i < surfaces[k].length; i++)
+      for (var i = 0; i < surfaces[k].points.length; i++)
       {
-        for (var j = 0; j < surfaces[k][i].length; j++)
+        for (var j = 0; j < surfaces[k].points[i].length; j++)
         {
-          if (surfaces[k][i][j].x < 0 || surfaces[k][i][j].x > 1 ||
-              surfaces[k][i][j].y < 0 || surfaces[k][i][j].y > 1)
+          if (surfaces[k].points[i][j].x < 0 || surfaces[k].points[i][j].x > 1 ||
+              surfaces[k].points[i][j].y < 0 || surfaces[k].points[i][j].y > 1)
             return true
         }
       }
@@ -665,16 +705,16 @@ function main(scale, inputSurfaces)
   {
     for (var k = 0; k < surfaces.length; k++)
     {
-      for (var i = 0; i < surfaces[k].length; i++)
+      for (var i = 0; i < surfaces[k].points.length; i++)
       {
-        for (var j = 0; j < surfaces[k][i].length; j++)
+        for (var j = 0; j < surfaces[k].points[i].length; j++)
         {
-          surfaces[k][i][j].x -= .5
-          surfaces[k][i][j].x *= .9
-          surfaces[k][i][j].x += .5
-          surfaces[k][i][j].y -= .5
-          surfaces[k][i][j].y *= .9
-          surfaces[k][i][j].y += .5
+          surfaces[k].points[i][j].x -= .5
+          surfaces[k].points[i][j].x *= .9
+          surfaces[k].points[i][j].x += .5
+          surfaces[k].points[i][j].y -= .5
+          surfaces[k].points[i][j].y *= .9
+          surfaces[k].points[i][j].y += .5
         }
       }
     }
@@ -682,6 +722,7 @@ function main(scale, inputSurfaces)
 
   function resize()
   {
+
     height = width = Math.round(window.innerWidth * scale)
     height1 = height-1
     plotWidth = Math.max(1, Math.round(width / 250))
@@ -703,7 +744,7 @@ function main(scale, inputSurfaces)
     }
     //No point is chosen
     if (dragId == -1) return
-    surfaces[currentSurfaceId][dragId.i][dragId.j] = getXY(ev, physicalCanvas)
+    surfaces[currentSurfaceId].points[dragId.i][dragId.j] = getXY(ev, physicalCanvas)
     drawSurfaces()
     ev.preventDefault
   }
@@ -722,18 +763,18 @@ function main(scale, inputSurfaces)
       return
     }
 
-    if (surfaces.length == 0 || surfaces[currentSurfaceId].length == 0)
+    if (surfaces.length == 0 || surfaces[currentSurfaceId].points.length == 0)
     {
       return
     }
 
     //Get closest point to the click
     var minimumDistance = width, distanceSquare, xDelta, yDelta
-    for (var i = 0; i < surfaces[currentSurfaceId].length; i++)
+    for (var i = 0; i < surfaces[currentSurfaceId].points.length; i++)
     {
-      for (var j = 0; j < surfaces[currentSurfaceId][0].length; j++)
+      for (var j = 0; j < surfaces[currentSurfaceId].points[0].length; j++)
       {
-        distanceSquare = calcDistanceSquare(clickCoordinates, surfaces[currentSurfaceId][i][j]);
+        distanceSquare = calcDistanceSquare(clickCoordinates, surfaces[currentSurfaceId].points[i][j]);
         if ( distanceSquare < minimumDistance )
         {
           dragId = {
@@ -744,7 +785,7 @@ function main(scale, inputSurfaces)
         }
       }
     }
-    surfaces[currentSurfaceId][dragId.i][dragId.j] = clickCoordinates
+    surfaces[currentSurfaceId].points[dragId.i][dragId.j] = clickCoordinates
     drawSurfaces()
     ev.preventDefault()
   }
@@ -762,7 +803,7 @@ function main(scale, inputSurfaces)
   }
   function mouseMoveParameter(ev)
   {
-    if (surfaces.length == 0 || surfaces[currentSurfaceId].length == 0)
+    if (surfaces.length == 0 || surfaces[currentSurfaceId].points.length == 0)
     {
       resize()
       return
