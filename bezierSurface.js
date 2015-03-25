@@ -183,7 +183,7 @@ function main(scale, points)
         break
       //S
       case 83:
-        splitCurve()
+        splitSurface(pointOnSurface.x , pointOnSurface.y)
         break
       //Z
       case 90:
@@ -214,12 +214,10 @@ function main(scale, points)
   //If deCasteljauRatio is in the current curve range, make the current curve
   // into two surfaces with the exact same shape as the current curve, where their
   // meeting point is on the original curve at the deCasteljau as t parameter.
-  function splitCurve()
+  function splitSurface(u, v)
   {
     //check if t value is in range
-    if (surfaces.length == 0 ||
-        deCasteljauRatio <= surfaces[currentSurfaceId].startT ||
-        deCasteljauRatio >= surfaces[currentSurfaceId].endT)
+    if (surfaces.length == 0 || surfaces[currentSurfaceId].length == 0)
     {
       return
     }
@@ -405,6 +403,10 @@ function main(scale, points)
 
   function drawSurfaces()
   {
+    while(isExceedingCanvas())
+    {
+      correctZoom()
+    }
     for (var i = 0; i < surfaces.length; i++)
     {
       drawSurface(surfaces[i], i == currentSurfaceId)
@@ -466,13 +468,14 @@ function main(scale, points)
     physicalCtx.lineWidth = doublePlotWidth
     var step = 1 / width
     var lastStep
+
     if (isHorizontal)
     {
-      lastStep = tensor(surface, value, 0)
+      lastStep = tensor(surface, value, 0).pop()[0][0]
     }
     else
     {
-      lastStep = tensor(surface, 0, value)
+      lastStep = tensor(surface, 0, value).pop()[0][0]
     }
 
     //Draw Curve step
@@ -480,11 +483,11 @@ function main(scale, points)
     {
       if (isHorizontal)
       {
-        curveStep = tensor(surface, value, t)
+        curveStep = tensor(surface, value, t).pop()[0][0]
       }
       else
       {
-        curveStep = tensor(surface, t, value)
+        curveStep = tensor(surface, t, value).pop()[0][0]
       }
       physicalCtx.strokeStyle = curveColor
       physicalCtx.beginPath()
@@ -523,48 +526,62 @@ function main(scale, points)
   }
 
 
-  function tensor(points, u, v)
+  function tensor(surface, u, v)
   {
     //De Casteljau with 2 parameters
-    var skeletonPoints = points
-    for (var k = 1; k < Math.min(points.length, points[0].length); k++)
+    var skeletonPoints = [surface]
+    for (var k = 0; k < Math.min(surface.length, surface[0].length) - 1; k++)
     {
       //De Casteljau iteration
       nextStepSkeleton = []
-      for (var i = 0; i < skeletonPoints.length - 1; i++)
+      for (var i = 0; i < skeletonPoints[k].length - 1; i++)
       {
         nextStepSkeletonRow = []
-        for (var j = 0; j < skeletonPoints[0].length - 1; j++)
+        for (var j = 0; j < skeletonPoints[k][0].length - 1; j++)
         {
           nextStepSkeletonRow.push({
-            x : skeletonPoints[i][j].x * (1 - u) * (1 - v)+
-                skeletonPoints[i + 1][j].x * u * (1 - v) +
-                skeletonPoints[i][j + 1].x * (1 - u) * v +
-                skeletonPoints[i + 1][j + 1].x * u * v,
-            y : skeletonPoints[i][j].y * (1 - u) * (1 - v)+
-                skeletonPoints[i + 1][j].y * u * (1 - v) +
-                skeletonPoints[i][j + 1].y * (1 - u) * v +
-                skeletonPoints[i + 1][j + 1].y * u * v
+            x : skeletonPoints[k][i][j].x * (1 - u) * (1 - v)+
+                skeletonPoints[k][i + 1][j].x * u * (1 - v) +
+                skeletonPoints[k][i][j + 1].x * (1 - u) * v +
+                skeletonPoints[k][i + 1][j + 1].x * u * v,
+            y : skeletonPoints[k][i][j].y * (1 - u) * (1 - v)+
+                skeletonPoints[k][i + 1][j].y * u * (1 - v) +
+                skeletonPoints[k][i][j + 1].y * (1 - u) * v +
+                skeletonPoints[k][i + 1][j + 1].y * u * v
           })
         }
         nextStepSkeleton.push(nextStepSkeletonRow)
       }
-      skeletonPoints = nextStepSkeleton
-
+        //console.log(JSON.stringify(skeletonPoints, null, 2))
+      skeletonPoints.push(nextStepSkeleton)
+      if (u == 0 & v == 0)
+      {
+        console.log(surface.length, skeletonPoints.length, k)
+      }
     }
     //Last decasteljau steps, now it's a curve - not a surface
     //If more rows than columns in given points matrix
-    if (skeletonPoints.length > 1)
+    if (skeletonPoints[skeletonPoints.length - 1].length > 1)
     {
-      return deCasteljau(getRow(skeletonPoints, 0), u).pop()[0]
+      var skeletonCurve = deCasteljau(getRow(skeletonPoints.pop(), 0), u)
+      for (var i = 0; i < skeletonCurve.length; i++)
+      {
+        skeletonPoints.push([skeletonCurve[i]])
+      }
+      return skeletonPoints
     }
     //If more columns than rows in given points matrix
-    if (skeletonPoints[0].length > 1)
+    if (skeletonPoints[skeletonPoints.length - 1][0].length > 1)
     {
-      return deCasteljau(skeletonPoints[0], v).pop()[0]
+      var skeletonCurve = deCasteljau(skeletonPoints.pop()[0], v)
+      for (var i = 0; i < skeletonCurve.length; i++)
+      {
+        skeletonPoints.push([skeletonCurve[i]])
+      }
+      return skeletonPoints
     }
     //If given matrix was square
-    return skeletonPoints[0][0]
+    return skeletonPoints
   }
 
   function getRow(matrix, index)
@@ -575,6 +592,42 @@ function main(scale, points)
       row.push(matrix[i][index])
     }
     return row
+  }
+
+  function isExceedingCanvas()
+  {
+    for (var k = 0; k < surfaces.length; k++)
+    {
+      for (var i = 0; i < surfaces[k].length; i++)
+      {
+        for (var j = 0; j < surfaces[k][i].length; j++)
+        {
+          if (surfaces[k][i][j].x < 0 || surfaces[k][i][j].x > 1 ||
+              surfaces[k][i][j].y < 0 || surfaces[k][i][j].y > 1)
+            return true
+        }
+      }
+    }
+    return false
+  }
+
+  function correctZoom()
+  {
+    for (var k = 0; k < surfaces.length; k++)
+    {
+      for (var i = 0; i < surfaces[k].length; i++)
+      {
+        for (var j = 0; j < surfaces[k][i].length; j++)
+        {
+          surfaces[k][i][j].x -= .5
+          surfaces[k][i][j].x *= .9
+          surfaces[k][i][j].x += .5
+          surfaces[k][i][j].y -= .5
+          surfaces[k][i][j].y *= .9
+          surfaces[k][i][j].y += .5
+        }
+      }
+    }
   }
 
   function resize()
