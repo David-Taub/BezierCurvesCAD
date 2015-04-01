@@ -5,7 +5,7 @@ $( document ).ready(function()
     "points" : [[{"x":0.13,"y":0.55},{"x":0.25,"y":0.50},{"x":0.19,"y":0.38},{"x":0.06,"y":0.37}],
                 [{"x":0.53,"y":0.84},{"x":0.45,"y":0.52},{"x":0.36,"y":0.43},{"x":0.19,"y":0.14}],
                 [{"x":0.86,"y":0.43},{"x":0.72,"y":0.34},{"x":0.60,"y":0.17},{"x":0.77,"y":0.14}]]
-              }
+    }
   main( .4, [surface])
 })
 
@@ -13,7 +13,6 @@ $( document ).ready(function()
 function main(scale, inputSurfaces)
 {
   var HISTORY_MAX_SIZE = 50
-  var LINES_IN_GRID = 6
   var history = [], forwardHistory = []
   var timer, deCasteljauRatio = 1
   var surfaces
@@ -46,9 +45,11 @@ function main(scale, inputSurfaces)
     $("#physicalCanvas").mousemove(drag)
     $("#physicalCanvas").mousedown(startDrag)
     $("#physicalCanvas").mouseup(stopDrag)
+    $("input:radio").change(resize)
     //Mobile support
     $(document).keyup(onKeyUp)
     $(document).resize(resize)
+    $("#radio10").prop("checked", true)
   }
 
   function undo()
@@ -407,21 +408,28 @@ function main(scale, inputSurfaces)
 
     resize()
   }
+  function getLinesAmountInGrid()
+  {
+    return parseInt($("input[name=grid]:checked", "#gridForm").val())
+  }
+
   function drawParameterGrid()
   {
+
     if (surfaces.length == 0 || surfaces[currentSurfaceId].points.length == 0 )
     {
       return
     }
+    linesInGrid = getLinesAmountInGrid() + 1
 
     //for (var u = 0; u <= 1; u += 1 / (surfaces[currentSurfaceId].points.length - 1))
-    for (var u = 0; u <= 1; u += 1 / LINES_IN_GRID)
+    for (var u = 0; u <= linesInGrid; u += 1 )
     {
-      drawParameterLine(u, true, "#f00000");
+      drawParameterLine(u / linesInGrid, true, "#f00000");
     }
-    for (var v = 0; v <= 1; v += 1 / LINES_IN_GRID)
+    for (var v = 0; v <= linesInGrid; v += 1)
     {
-      drawParameterLine(v, false, "#f00000");
+      drawParameterLine(v / linesInGrid, false, "#f00000");
     }
   }
 
@@ -533,11 +541,11 @@ function main(scale, inputSurfaces)
     }
     for (var i = 0; i < surface.points[0].length; i++)
     {
-      drawPolygon(getColumn(surface.points, i), plotWidth, lineColor, dotColor)
+      drawPolygon(getColumn(surface.points, i), doublePlotWidth, lineColor, dotColor)
     }
     for (var i = 0; i < surface.points.length; i++)
     {
-      drawPolygon(surface.points[i], plotWidth, lineColor, dotColor)
+      drawPolygon(surface.points[i], doublePlotWidth, lineColor, dotColor)
     }
     //plot curve
     var curveColor = "#a04040"
@@ -545,16 +553,17 @@ function main(scale, inputSurfaces)
     {
       curveColor = "#f00000"
     }
+    linesInGrid = getLinesAmountInGrid() + 1
     //for (var u = 0; u <= 1; u += 1 / (surface.points.length - 1))
-    for (var u = 0; u <= 1; u += 1 / LINES_IN_GRID)
+    for (var u = 0; u <= linesInGrid; u += 1)
     {
-      plotCurveOnSurface(surface, u, true, curveColor);
+      plotCurveOnSurface(surface, u / linesInGrid, true, curveColor);
     }
 
     //for (var v = 0; v <= 1; v += 1 / (surface.points[0].length - 1))
-    for (var v = 0; v <= 1; v += 1 / LINES_IN_GRID)
+    for (var v = 0; v <= linesInGrid; v += 1)
     {
-      plotCurveOnSurface(surface, v, false, curveColor);
+      plotCurveOnSurface(surface, v / linesInGrid, false, curveColor);
     }
   }
 
