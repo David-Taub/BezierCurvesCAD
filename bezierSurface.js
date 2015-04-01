@@ -847,7 +847,6 @@ function main(scale, inputSurfaces)
       plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnSurface.y, true, "#00f000");
       //Draw dot
       point = tensor(surfaces[currentSurfaceId], mouseOnSurface.y, mouseOnSurface.x).pop()[0]
-      console.log(point[0].x)
       drawPolygon(point, plotWidth, "#000000", "#000000")
     }
 
