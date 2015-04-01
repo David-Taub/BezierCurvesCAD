@@ -17,6 +17,7 @@ function main(scale, inputSurfaces)
   var timer, deCasteljauRatio = 1
   var surfaces
   var pointOnSurface = -1
+  var mouseOnSurface = -1
   var currentSurfaceId = 0
   var physicalCanvas, physicalCtx
   var parameterCanvas, parameterCtx
@@ -29,9 +30,8 @@ function main(scale, inputSurfaces)
   function init()
   {
     surfaces = inputSurfaces
-
+    shouldDrawSkeleton = true
     updateSurfacesList()
-    $("#slider").value = $("#slider").max
     physicalCanvas = $("#physicalCanvas").get(0)
     physicalCtx = physicalCanvas.getContext("2d")
     parameterCanvas = $("#parameterCanvas").get(0)
@@ -40,7 +40,7 @@ function main(scale, inputSurfaces)
     $("#downloadButton").click(saveSurfaces)
     $("#surfacesList").change(changeCurrentSurface)
     $("#parameterCanvas").mousemove(mouseMoveParameter)
-    $("#parameterCanvas").mouseleave(resize)
+    $("#parameterCanvas").mouseleave(function () {mouseOnSurface = -1;resize()})
     $("#parameterCanvas").mouseup(mouseUpParameter)
     $("#physicalCanvas").mousemove(drag)
     $("#physicalCanvas").mousedown(startDrag)
@@ -48,7 +48,7 @@ function main(scale, inputSurfaces)
     $("input:radio").change(resize)
     //Mobile support
     $(document).keyup(onKeyUp)
-    $(document).resize(resize)
+    $(window).resize(resize)
     $("#radio10").prop("checked", true)
   }
 
@@ -226,6 +226,11 @@ function main(scale, inputSurfaces)
         {
           undo()
         }
+        break
+      //C
+      case 67:
+        shouldDrawSkeleton = !shouldDrawSkeleton
+        resize()
         break
       //Y
       case 89:
@@ -408,6 +413,7 @@ function main(scale, inputSurfaces)
 
     resize()
   }
+
   function getLinesAmountInGrid()
   {
     return parseInt($("input[name=grid]:checked", "#gridForm").val())
@@ -458,48 +464,25 @@ function main(scale, inputSurfaces)
   {
       physicalCtx.lineWidth = lineWidth
       physicalCtx.beginPath()
-      physicalCtx.moveTo(polygonPoints[0].x, height1 - polygonPoints[0].y)
+      physicalCtx.moveTo(polygonPoints[0].x * width, height1 * (1 - polygonPoints[0].y))
       for (var i = 0; i < polygonPoints.length; i++)
       {
         //Dot
         physicalCtx.strokeStyle = dotColor
-        physicalCtx.strokeRect(polygonPoints[i].x - plotWidth,
-                            height1 - polygonPoints[i].y - plotWidth,
+        physicalCtx.strokeRect(polygonPoints[i].x * width - plotWidth,
+                            height1 * (1 - polygonPoints[i].y) - plotWidth,
                             doublePlotWidth,
                             doublePlotWidth)
         physicalCtx.stroke()
         //Line
         physicalCtx.strokeStyle = lineColor
-        physicalCtx.lineTo(polygonPoints[i].x, height1 - polygonPoints[i].y)
+        physicalCtx.lineTo(polygonPoints[i].x * width, height1 * (1 - polygonPoints[i].y))
         physicalCtx.stroke()
       }
   }
 
-  function convertToCanvasSpace(surface)
-  {
-    var newSurface =
-    {
-      name : surface.name,
-      points : []
-    }
-    for (var i = 0; i < surface.points.length; i++)
-    {
-      var newRow = []
-      for (var j = 0; j < surface.points[0].length; j++)
-      {
-        newRow.push({
-          x : surface.points[i][j].x * width,
-          y : surface.points[i][j].y * height1
-        })
-      }
-      newSurface.points.push(newRow)
-    }
-    return newSurface
-  }
-
   function drawSurfaces()
   {
-    physicalCtx.clearRect(0,0, width, height)
     while(isExceedingCanvas())
     {
       correctZoom()
@@ -516,8 +499,8 @@ function main(scale, inputSurfaces)
     {
       drawParameterLine(pointOnSurface.x, false, "#f000f0")
       drawParameterLine(pointOnSurface.y, true, "#f000f0")
-      plotCurveOnSurface(convertToCanvasSpace(surfaces[currentSurfaceId]), pointOnSurface.x, false, "#f000f0");
-      plotCurveOnSurface(convertToCanvasSpace(surfaces[currentSurfaceId]), pointOnSurface.y, true, "#f000f0");
+      plotCurveOnSurface(surfaces[currentSurfaceId], pointOnSurface.x, false, "#f000f0");
+      plotCurveOnSurface(surfaces[currentSurfaceId], pointOnSurface.y, true, "#f000f0");
     }
   }
 
@@ -528,8 +511,6 @@ function main(scale, inputSurfaces)
     {
       return
     }
-    surface = convertToCanvasSpace(surface)
-
     //disabled colors
     var lineColor = "#e0e0e0"
     var dotColor = "#a0a0a0"
@@ -595,8 +576,8 @@ function main(scale, inputSurfaces)
       }
       physicalCtx.strokeStyle = curveColor
       physicalCtx.beginPath()
-      physicalCtx.moveTo(lastStep.x, height1 - lastStep.y)
-      physicalCtx.lineTo(curveStep.x, height1 - curveStep.y)
+      physicalCtx.moveTo(lastStep.x * width, height1 * (1 - lastStep.y))
+      physicalCtx.lineTo(curveStep.x * width, height1 * (1 - curveStep.y))
       physicalCtx.stroke()
       lastStep = curveStep
     }
@@ -732,6 +713,9 @@ function main(scale, inputSurfaces)
   function resize()
   {
 
+    physicalCtx.clearRect(0,0, width, height)
+
+    parameterCtx.clearRect(0,0, width, height)
     height = width = Math.round(window.innerWidth * scale)
     height1 = height-1
     plotWidth = Math.max(1, Math.round(width / 250))
@@ -741,6 +725,7 @@ function main(scale, inputSurfaces)
     parameterCanvas.width = width
     parameterCanvas.height = height
     drawSurfaces()
+    drawMouseOnSurface()
     drawParameterGrid()
   }
 
@@ -754,7 +739,7 @@ function main(scale, inputSurfaces)
     //No point is chosen
     if (dragId == -1) return
     surfaces[currentSurfaceId].points[dragId.i][dragId.j] = getXY(ev, physicalCanvas)
-    drawSurfaces()
+    resize()
     ev.preventDefault
   }
   function calcDistanceSquare(a, b)
@@ -795,7 +780,7 @@ function main(scale, inputSurfaces)
       }
     }
     surfaces[currentSurfaceId].points[dragId.i][dragId.j] = clickCoordinates
-    drawSurfaces()
+    resize()
     ev.preventDefault()
   }
 
@@ -810,19 +795,63 @@ function main(scale, inputSurfaces)
     pointOnSurface = getXY(ev, parameterCanvas)
     resize()
   }
+
   function mouseMoveParameter(ev)
   {
-    if (surfaces.length == 0 || surfaces[currentSurfaceId].points.length == 0)
+    mouseOnSurface = getXY(ev, parameterCanvas)
+    resize()
+  }
+  function toHex(number, size)
+  {
+      var s = number.toString(16);
+      while (s.length < size) {s = "0" + s;}
+      return s;
+  }
+
+  function drawSkeleton()
+  {
+    skeletonPoints = tensor(surfaces[currentSurfaceId], mouseOnSurface.y, mouseOnSurface.x)
+    for (var k = 1; k < skeletonPoints.length; k++)
     {
-      resize()
+      shade = Math.round((240) * k / (skeletonPoints.length - 2) + 10)
+      lineColor = "#00" + toHex(shade, 2) + "00"
+      for (var i = 0; i < skeletonPoints[k].length; i++)
+      {
+        drawPolygon(skeletonPoints[k][i], plotWidth, lineColor, "#000000")
+      }
+      for (var j = 0; j < skeletonPoints[k][0].length; j++)
+      {
+        drawPolygon(getColumn(skeletonPoints[k], j), plotWidth, lineColor, "#000000")
+      }
+    }
+  }
+
+  function drawMouseOnSurface()
+  {
+    if (surfaces.length == 0 || surfaces[currentSurfaceId].points.length == 0 || mouseOnSurface == -1)
+    {
       return
     }
-    point = getXY(ev, parameterCanvas)
-    resize()
-    drawParameterLine(point.x, false, "#00f000")
-    drawParameterLine(point.y, true, "#00f000")
-    plotCurveOnSurface(convertToCanvasSpace(surfaces[currentSurfaceId]), point.x, false, "#00f000");
-    plotCurveOnSurface(convertToCanvasSpace(surfaces[currentSurfaceId]), point.y, true, "#00f000");
+
+    drawParameterLine(mouseOnSurface.x, false, "#00f000")
+    drawParameterLine(mouseOnSurface.y, true, "#00f000")
+
+    if (shouldDrawSkeleton)
+    {
+      drawSkeleton()
+    }
+    else
+    {
+      //Draw curves
+      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnSurface.x, false, "#00f000");
+      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnSurface.y, true, "#00f000");
+      //Draw dot
+      point = tensor(surfaces[currentSurfaceId], mouseOnSurface.y, mouseOnSurface.x).pop()[0]
+      console.log(point[0].x)
+      drawPolygon(point, plotWidth, "#000000", "#000000")
+    }
+
+
   }
 
   //Get x,y between 0 to 1 of given click event
