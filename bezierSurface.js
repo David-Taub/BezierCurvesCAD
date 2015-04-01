@@ -2,9 +2,9 @@ $( document ).ready(function()
 {
   var surface = {
     "name" : "1",
-    "points" : [[{"x":0.13,"y":0.55},{"x":0.25,"y":0.50},{"x":0.19,"y":0.38},{"x":0.06,"y":0.37}],
-                [{"x":0.53,"y":0.84},{"x":0.45,"y":0.52},{"x":0.36,"y":0.43},{"x":0.19,"y":0.14}],
-                [{"x":0.86,"y":0.43},{"x":0.72,"y":0.34},{"x":0.60,"y":0.17},{"x":0.77,"y":0.14}]]
+    "points" : [[{"x":0.08, "y":0.24}, {"x":0.37, "y":0.42}, {"x":0.62, "y":0.33}, {"x":0.70, "y":0.14}],
+                [{"x":0.27, "y":0.57}, {"x":0.43, "y":0.54}, {"x":0.66, "y":0.45}, {"x":0.98, "y":0.49}],
+                [{"x":0.16, "y":0.82}, {"x":0.39, "y":0.70}, {"x":0.71, "y":0.69}, {"x":0.77, "y":0.91}]]
     }
   main( .4, [surface])
 })
@@ -462,23 +462,23 @@ function main(scale, inputSurfaces)
   // used to draw the control polygon and the DeCasteljau skeleton
   function drawPolygon(polygonPoints, lineWidth, lineColor, dotColor)
   {
-      physicalCtx.lineWidth = lineWidth
-      physicalCtx.beginPath()
-      physicalCtx.moveTo(polygonPoints[0].x * width, height1 * (1 - polygonPoints[0].y))
-      for (var i = 0; i < polygonPoints.length; i++)
-      {
-        //Dot
-        physicalCtx.strokeStyle = dotColor
-        physicalCtx.strokeRect(polygonPoints[i].x * width - plotWidth,
-                            height1 * (1 - polygonPoints[i].y) - plotWidth,
-                            doublePlotWidth,
-                            doublePlotWidth)
-        physicalCtx.stroke()
-        //Line
-        physicalCtx.strokeStyle = lineColor
-        physicalCtx.lineTo(polygonPoints[i].x * width, height1 * (1 - polygonPoints[i].y))
-        physicalCtx.stroke()
-      }
+    physicalCtx.lineWidth = lineWidth
+    physicalCtx.beginPath()
+    physicalCtx.moveTo(polygonPoints[0].x * width, height1 * (1 - polygonPoints[0].y))
+    for (var i = 0; i < polygonPoints.length; i++)
+    {
+      //Dot
+      physicalCtx.strokeStyle = dotColor
+      physicalCtx.strokeRect(polygonPoints[i].x * width - plotWidth,
+                          height1 * (1 - polygonPoints[i].y) - plotWidth,
+                          doublePlotWidth,
+                          doublePlotWidth)
+      physicalCtx.stroke()
+      //Line
+      physicalCtx.strokeStyle = lineColor
+      physicalCtx.lineTo(polygonPoints[i].x * width, height1 * (1 - polygonPoints[i].y))
+      physicalCtx.stroke()
+    }
   }
 
   function drawSurfaces()
