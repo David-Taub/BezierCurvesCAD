@@ -370,6 +370,7 @@ function main(scale, points)
   }
 
 
+
   //Use the current curve as master and the closest to it as slave,
   //make their points order "standard" (see standardMeeting with reverseToStandard true)
   //Makes slave meet the master so the derivatives up to the derLevel are continuous.
@@ -533,6 +534,11 @@ function main(scale, points)
   //Draw all curves on the canvas using drawCurves function
   function drawCurves()
   {
+    //zoom out if needed
+    while(isExceedingCanvas())
+    {
+      correctZoom()
+    }
     curveCtx.clearRect(0,0, width, height)
     for (var i = 0; i < curves.length; i++)
     {
@@ -637,6 +643,36 @@ function main(scale, points)
       }
     }
     return skeletonPoints
+  }
+
+  function correctZoom()
+  {
+    for (var k = 0; k < curves.length; k++)
+    {
+      for (var i = 0; i < curves[k].points.length; i++)
+      {
+        curves[k].points[i].x -= .5
+        curves[k].points[i].x *= .9
+        curves[k].points[i].x += .5
+        curves[k].points[i].y -= .5
+        curves[k].points[i].y *= .9
+        curves[k].points[i].y += .5
+      }
+    }
+  }
+
+  function isExceedingCanvas()
+  {
+    for (var k = 0; k < curves.length; k++)
+    {
+      for (var i = 0; i < curves[k].points.length; i++)
+      {
+        if (curves[k].points[i].x < 0 || curves[k].points[i].x > 1 ||
+            curves[k].points[i].y < 0 || curves[k].points[i].y > 1)
+          return true
+      }
+    }
+    return false
   }
 
   function resize()
