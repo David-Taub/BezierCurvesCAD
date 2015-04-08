@@ -1,18 +1,6 @@
 $( document ).ready(function()
 {
-  //Random points
-  var numberOfPoints = Math.floor(Math.random() * 10 + 3)
-  points = []
-  for (var i = 0; i < numberOfPoints; i++)
-  {
-    points.push(
-    {
-      x : Math.random(),
-      y : Math.random()
-    })
-  }
-
-  main( .4, points)
+  main( .4, [{"x":0.92,"y":0.14},{"x":0.63,"y":0.74},{"x":0.26,"y":0.71},{"x":0.15,"y":0.19}])
 })
 
 
@@ -385,6 +373,7 @@ function main(scale, points)
   //Use the current curve as master and the closest to it as slave,
   //make their points order "standard" (see standardMeeting with reverseToStandard true)
   //Makes slave meet the master so the derivatives up to the derLevel are continuous.
+  //Note: ratio variable is set so is user split and then merge a curve, the slave's dots don't move.
   //derLevel = 0 -> the curves are continuous
   //derLevel = 1 -> the curves are differentiable
   //derLevel = 2 -> the curves 2nd derivatives are continuous
@@ -408,8 +397,9 @@ function main(scale, points)
 
     //Master points - P0,P1,...,Pm-1
     //Slave points - Q0,Q1,...,Qn-1
-    //Q0 = Pm
+    //Q0 = Pm-1
     var masterLastPoint1 = curves[masterId].points[curves[masterId].points.length - 1]
+    originalSlaveFirstPoint1 = $.extend({}, curves[slaveId].points[0])
     curves[slaveId].points[0] = $.extend({}, masterLastPoint1)
     if (derLevel < 1)
     {
@@ -417,11 +407,12 @@ function main(scale, points)
       return
     }
     var masterLastPoint2 = curves[masterId].points[curves[masterId].points.length - 2]
-    //r1 = m/n
-    var ratio1 = curves[masterId].points.length / curves[slaveId].points.length
+    //r = Q1-Q0/Pm-1-Pm-2
+    var ratio = calcDistanceSquare(curves[slaveId].points[1], originalSlaveFirstPoint1)
+    ratio = Math.sqrt(ratio / calcDistanceSquare(masterLastPoint2, masterLastPoint1))
     //Q1 = (r1 + 1)Pm-1 - (r1)Pm-2
-    curves[slaveId].points[1].x = (1 + ratio1) * masterLastPoint1.x - ratio1 * masterLastPoint2.x
-    curves[slaveId].points[1].y = (1 + ratio1) * masterLastPoint1.y - ratio1 * masterLastPoint2.y
+    curves[slaveId].points[1].x = (1 + ratio) * masterLastPoint1.x - ratio * masterLastPoint2.x
+    curves[slaveId].points[1].y = (1 + ratio) * masterLastPoint1.y - ratio * masterLastPoint2.y
 
     if (derLevel < 2)
     {
@@ -429,15 +420,13 @@ function main(scale, points)
       return
     }
     var masterLastPoint3 = curves[masterId].points[curves[masterId].points.length - 3]
-    //r2 = r1(m-1)/(n-1)
-    var ratio2 = ratio1 * (curves[masterId].points.length - 1) / (curves[slaveId].points.length - 1)
-    //Q2 = (r2+2r1+1)Pm-1 - 2(r2 + r1)Pm-2 + (r2)P-3
-    curves[slaveId].points[2].x = (ratio2 + 2 * ratio1 + 1) * masterLastPoint1.x
-    curves[slaveId].points[2].x -= 2 * (ratio2 + ratio1) * masterLastPoint2.x
-    curves[slaveId].points[2].x += ratio2 * masterLastPoint3.x
-    curves[slaveId].points[2].y = (ratio2 + 2 * ratio1 + 1) * masterLastPoint1.y
-    curves[slaveId].points[2].y -= 2 * (ratio2 + ratio1) * masterLastPoint2.y
-    curves[slaveId].points[2].y += ratio2 * masterLastPoint3.y
+    //Q2 = ((r+1)^2)*Pm-1 - 2(r+1)*r*Pm-2 + (r^2)P-3
+    curves[slaveId].points[2].x = (ratio + 1) * (ratio + 1) * masterLastPoint1.x
+    curves[slaveId].points[2].x -= 2 * (ratio + 1) * ratio * masterLastPoint2.x
+    curves[slaveId].points[2].x += ratio * ratio * masterLastPoint3.x
+    curves[slaveId].points[2].y = (ratio + 1) * (ratio + 1) * masterLastPoint1.y
+    curves[slaveId].points[2].y -= 2 * (ratio + 1) * ratio * masterLastPoint2.y
+    curves[slaveId].points[2].y += ratio * ratio * masterLastPoint3.y
 
     resize()
   }
