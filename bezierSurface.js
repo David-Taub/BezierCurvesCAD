@@ -166,8 +166,10 @@ function main(scale, inputSurfaces)
     pointOnSurface = -1
     resize()
   }
+
   //Load surfaces from file which is selected in "browse..." element
-  function loadSurfaces(ev) {
+  function loadSurfaces(ev)
+  {
     var file = $("#fileInput")[0].files[0]; // FileList object
     var reader = new FileReader()
 
@@ -332,7 +334,10 @@ function main(scale, inputSurfaces)
     //handle empty canvas
     if (surfaces.length == 0)
     {
-      surfaces = [[[clickPoint]]]
+      surfaces = [{
+        name : "0",
+        points : [[clickPoint]]
+      }]
       currentSurfaceId = 0
       updateSurfacesList()
       resize()
@@ -391,15 +396,24 @@ function main(scale, inputSurfaces)
     pushToHistory()
     if (!deleteRow)
     {
+      //Column
       surfaces[currentSurfaceId].points.pop()
     }
     else
     {
+      //Row
       for (var i = 0; i < surfaces[currentSurfaceId].points.length; i++)
       {
         surfaces[currentSurfaceId].points[i].pop()
       }
     }
+    removeCurrentIfEmpty()
+    resize()
+  }
+
+  function removeCurrentIfEmpty()
+  {
+    //remove empty surfaces
     if (surfaces[currentSurfaceId].points.length == 0 ||
         surfaces[currentSurfaceId].points[0].length == 0)
     {
@@ -410,8 +424,6 @@ function main(scale, inputSurfaces)
       }
       updateSurfacesList()
     }
-
-    resize()
   }
 
   function getLinesAmountInGrid()
@@ -483,25 +495,28 @@ function main(scale, inputSurfaces)
 
   function drawSurfaces()
   {
+    if (surfaces.length == 0)
+    {
+      return
+    }
+    //zoom out if needed
     while(isExceedingCanvas())
     {
       correctZoom()
     }
     for (var i = 0; i < surfaces.length; i++)
     {
-      if (i != currentSurfaceId)
-      {
-        drawSurface(surfaces[i], false)
-      }
+      drawSurface(surfaces[i], i == currentSurfaceId)
     }
-    drawSurface(surfaces[currentSurfaceId], true)
-    if (pointOnSurface != -1)
+    if (pointOnSurface == -1)
     {
-      drawParameterLine(pointOnSurface.x, false, "#f000f0")
-      drawParameterLine(pointOnSurface.y, true, "#f000f0")
-      plotCurveOnSurface(surfaces[currentSurfaceId], pointOnSurface.x, false, "#f000f0");
-      plotCurveOnSurface(surfaces[currentSurfaceId], pointOnSurface.y, true, "#f000f0");
+      return
     }
+    //Draw point on surface
+    drawParameterLine(pointOnSurface.x, false, "#f000f0")
+    drawParameterLine(pointOnSurface.y, true, "#f000f0")
+    plotCurveOnSurface(surfaces[currentSurfaceId], pointOnSurface.x, false, "#f000f0");
+    plotCurveOnSurface(surfaces[currentSurfaceId], pointOnSurface.y, true, "#f000f0");
   }
 
   function drawSurface(surface, isCurrent)
