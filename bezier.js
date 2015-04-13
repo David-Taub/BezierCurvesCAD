@@ -7,9 +7,11 @@ $( document ).ready(function()
 function main(scale, points)
 {
   var HISTORY_MAX_SIZE = 50
+  var CLICK_DISTANCE_THRESHOLD = 0.001
   var history = [], forwardHistory = []
   var currentCurveId = 0
   var timer, deCasteljauRatio = 1
+  var selectedPoint = -1
   var curves
   var curveCanvas, polynomialsCanvas, curveCtx, polynomialsCtx, width, height, height1, plotWidth, doublePlotWidth,  dragId = -1
   var iColor = ["#f00000","#00f000","#0000f0","#00f0f0","#f0f000","#f000f0","#090909"]
@@ -145,7 +147,8 @@ function main(scale, points)
   }
 
   //Load curves from file which is selected in "browse..." element
-  function loadCurves(ev) {
+  function loadCurves(ev)
+  {
     var file = $("#fileInput")[0].files[0]; // FileList object
     var reader = new FileReader()
 
@@ -278,6 +281,7 @@ function main(scale, points)
     curves.push(postfixCurve)
 
     updateCurvesList()
+    deCasteljauRatio = 1
     resize()
   }
 
@@ -464,6 +468,71 @@ function main(scale, points)
     }
   }
 
+  function binomialCoefficient(n, v)
+  {
+    value = 1
+    for (var i = 0; i < v; i++)
+    {
+      value *= n-i
+      value /= i + 1
+    }
+    return value
+  }
+
+  function hexToRgb(hex) {
+      var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+      } : null;
+  }
+
+  function genBernPolyEquation(n, v)
+  {
+    rgb = hexToRgb(iColor[v % 7])
+    str = ""
+    str += "\\definecolor{" + v.toString() + "}{RGB}{" + rgb.r.toString() + "," +
+                                                         rgb.g.toString() + "," +
+                                                         rgb.b.toString() + "} "
+    str += "\\color{" + v.toString() + "} \\blacksquare \\ \\ \\color{black} "
+    str += "B_" + v.toString() + "^" + n.toString() + "(t)="
+    coefficient = binomialCoefficient(n,v)
+    if (coefficient > 1)
+    {
+      str += coefficient.toString() + "\\cdot "
+    }
+    if (v > 0)
+    {
+      str += "t^" + v.toString()
+    }
+    if (v >0 && n-v > 0)
+    {
+      str += "\\cdot "
+    }
+    if(n - v > 0)
+    {
+      str += "(1-t)^"+(n-v).toString()
+    }
+    return str
+  }
+ function writeBernPolynomials(n)
+ {
+    if (MathJax.Hub.getAllJax("MathDiv").length == 0)
+    {
+      setTimeout(function(){writeBernPolynomials(n)}, 5)
+      return
+    }
+    var math = MathJax.Hub.getAllJax("MathDiv")[0]
+
+    str = ""
+    for (v = 0; v <= n; v++)
+    {
+      str += "\\\\" + genBernPolyEquation(n, v)
+    }
+    MathJax.Hub.Queue(["Text",math,str]);
+  }
+
   //Draws the Bernstein Polynomials of current curve
   function drawBernsteinPolynomial()
   {
@@ -510,7 +579,7 @@ function main(scale, points)
   //Add to canvas lines and dots of given polygon
   // (polygon is open, last and first dots are not drawn)
   // used to draw the control polygon and the DeCasteljau skeleton
-  function drawPolygon(polygonPoints, lineWidth, lineColor, dotColor)
+  function drawPolygon(polygonPoints, lineWidth, lineColor, dotColor, isCurrent)
   {
       curveCtx.lineWidth = lineWidth
       curveCtx.beginPath()
@@ -518,12 +587,31 @@ function main(scale, points)
       for (var i = 0; i < polygonPoints.length; i++)
       {
         //Dot
-        curveCtx.strokeStyle = dotColor
-        curveCtx.strokeRect(polygonPoints[i].x - plotWidth,
-                            height1 - polygonPoints[i].y - plotWidth,
-                            doublePlotWidth,
-                            doublePlotWidth)
-        curveCtx.stroke()
+        if(selectedPoint == i && isCurrent)
+        {
+          curveCtx.strokeStyle = "#00ffff"
+
+          curveCtx.strokeRect(polygonPoints[i].x - plotWidth * 2,
+                            height1 - polygonPoints[i].y - plotWidth * 2,
+                            plotWidth * 4,
+                            plotWidth * 4)
+        }
+        else
+        {
+          curveCtx.strokeStyle = dotColor
+          curveCtx.strokeRect(polygonPoints[i].x - plotWidth,
+                              height1 - polygonPoints[i].y - plotWidth,
+                              plotWidth * 2,
+                              plotWidth * 2)
+        }
+        if (isCurrent)
+        {
+          //Write Point id
+          curveCtx.stroke()
+          curveCtx.font="30px Courier New"
+          curveCtx.fillText("P".concat(i), polygonPoints[i].x + 10, height1 - polygonPoints[i].y)
+        }
+
         //Line
         curveCtx.strokeStyle = lineColor
         curveCtx.lineTo(polygonPoints[i].x, height1 - polygonPoints[i].y)
@@ -583,7 +671,7 @@ function main(scale, points)
       lineColor = "#0000f5"
       dotColor = "#0000f0"
     }
-    drawPolygon(points, plotWidth, lineColor, dotColor)
+    drawPolygon(points, plotWidth, lineColor, dotColor, isCurrent)
 
     //plot curve
     curveCtx.lineWidth = doublePlotWidth
@@ -612,7 +700,7 @@ function main(scale, points)
       var deCasteljauPoints = deCasteljau(points, deCasteljauRatio)
       for (var j = 1; j < deCasteljauPoints.length; j++)
       {
-        drawPolygon(deCasteljauPoints[j], plotWidth, "#00f000", "#0f0f0f")
+        drawPolygon(deCasteljauPoints[j], plotWidth, "#00f000", "#0f0f0f", false)
       }
     }
   }
@@ -686,6 +774,7 @@ function main(scale, points)
     polynomialsCanvas.width = width
     polynomialsCanvas.height = height
     drawBernsteinPolynomial()
+    writeBernPolynomials(curves[currentCurveId].points.length - 1)
     drawCurves()
   }
 
@@ -696,8 +785,13 @@ function main(scale, points)
     {
       return
     }
-    //No point is chosen
-    if (dragId < 0) return
+    //Not in drag
+    if (dragId < 0)
+    {
+      selectedPoint = findClosestPoint(getXY(ev))
+      drawCurves()
+      return
+    }
     curves[currentCurveId].points[dragId] = getXY(ev)
     drawCurves()
     ev.preventDefault()
@@ -717,12 +811,21 @@ function main(scale, points)
       addPoint(clickCoordinates, ev.shiftKey)
       return
     }
-
-    if (curves.length == 0)
+    dragId = findClosestPoint(clickCoordinates)
+    if (dragId == -1)
     {
       return
     }
+    selectedPoint = dragId
+    curves[currentCurveId].points[dragId] = clickCoordinates
+    drawCurves()
+    ev.preventDefault()
+  }
 
+  function findClosestPoint(clickCoordinates)
+  {
+
+    var closestId = -1
     //Get closest point to the click
     var minimumDistance = width, distanceSquare, xDelta, yDelta
     for (var i = 0; i < curves[currentCurveId].points.length; i++)
@@ -730,15 +833,16 @@ function main(scale, points)
       distanceSquare = calcDistanceSquare(clickCoordinates, curves[currentCurveId].points[i]);
       if ( distanceSquare < minimumDistance )
       {
-        dragId = i
+        closestId = i
         minimumDistance = distanceSquare
       }
     }
-    curves[currentCurveId].points[dragId] = clickCoordinates
-    drawCurves()
-    ev.preventDefault()
+    if (minimumDistance > CLICK_DISTANCE_THRESHOLD)
+    {
+      return -1
+    }
+    return closestId
   }
-
   function stopDrag(ev)
   {
 
