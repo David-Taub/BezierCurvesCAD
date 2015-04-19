@@ -25,7 +25,6 @@ function main(scale, points)
       startT : 0,
       endT : 1
     }
-
     curves = [curve]
 
     $("#slider").value = $("#slider").max
@@ -88,22 +87,7 @@ function main(scale, points)
   function pushToHistory()
   {
     //Deep copy
-    curvesCopy = []
-    for (var i = 0; i < curves.length; i++)
-    {
-      curveCopy = {
-        startT : curves[i].startT,
-        endT : curves[i].endT,
-        points : []
-      }
-
-      for (var j = 0; j < curves[i].points.length; j++)
-      {
-        curveCopy.points.push($.extend({}, curves[i].points[j]))
-      }
-      curvesCopy.push(curveCopy)
-    }
-
+    curvesCopy = $.extend(true, [], curves)
     history.push(curvesCopy)
     //Keep history size limited
     if (history.length > HISTORY_MAX_SIZE)
