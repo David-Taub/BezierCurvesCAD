@@ -1,11 +1,6 @@
 $( document ).ready(function()
 {
-  var surface = {
-    "name" : "1",
-    "points" : [[{"x":0.08, "y":0.24}, {"x":0.37, "y":0.42}, {"x":0.62, "y":0.33}, {"x":0.70, "y":0.14}],
-                [{"x":0.27, "y":0.57}, {"x":0.43, "y":0.54}, {"x":0.66, "y":0.45}, {"x":0.98, "y":0.49}],
-                [{"x":0.16, "y":0.82}, {"x":0.39, "y":0.70}, {"x":0.71, "y":0.69}, {"x":0.77, "y":0.91}]]
-    }
+  var surface = {"name":"1","points":[[{"x":0.9795918367346939,"y":0.0268707275390625},{"x":0.7602040816326531,"y":0.20034011529416454},{"x":0.11938775510204082,"y":0.2670067923409598}],[{"x":0.09489795918367347,"y":0.9846938775510204},{"x":0.08979591836734693,"y":0.7357142857142858},{"x":0.9816326530612245,"y":0.9846938775510204}]]}
   main( .4, [surface])
 })
 
@@ -22,9 +17,8 @@ function main(scale, inputSurfaces)
   var physicalCanvas, physicalCtx
   var parameterCanvas, parameterCtx
   var width, height, height1, plotWidth, doublePlotWidth,  dragId = -1
-  var iColor = ["#f00000","#00f000","#0000f0","#00f0f0","#f0f000","#f000f0","#090909"]
-  init()
 
+  init()
   resize()
 
   function init()
@@ -49,7 +43,7 @@ function main(scale, inputSurfaces)
     //Mobile support
     $(document).keyup(onKeyUp)
     $(window).resize(resize)
-    $("#radio10").prop("checked", true)
+    $("#radio1").prop("checked", true)
   }
 
   function undo()
@@ -89,24 +83,7 @@ function main(scale, inputSurfaces)
   function pushToHistory()
   {
     //Deep copy
-    var surfacesCopy = []
-    for (var k = 0; k < surfaces.length; k++)
-    {
-      var surfaceCopy = {
-        name : surfaces[k].name,
-        points : []
-      }
-      for (var i = 0; i < surfaces[k].points.length; i++)
-      {
-        var curveCopy = []
-        for (var j = 0; j < surfaces[k].points[i].length; j++)
-        {
-          curveCopy.push($.extend({}, surfaces[k].points[i][j]))
-        }
-        surfaceCopy.points.push(curveCopy)
-      }
-      surfacesCopy.push(surfaceCopy)
-    };
+    var surfacesCopy = $.extend(true, [], surfaces)
 
     history.push(surfacesCopy)
     //Keep history size limited
@@ -493,6 +470,30 @@ function main(scale, inputSurfaces)
     }
   }
 
+  function drawJacobian()
+  {
+    //return
+    physicalCtx.lineWidth = plotWidth
+    var step = 10 / width
+    for (var u = 0; u < 1; u += step)
+    {
+      for (var v = 0; v < 1; v += step)
+      {
+
+        point = tensor(surfaces[currentSurfaceId], u, v).pop()[0][0]
+        jacVal = getJacobian(surfaces[currentSurfaceId], u, v)
+        shade = (0.5 + jacVal) / 1
+        if (shade > 1)
+          shade = 1
+        if (shade < 0)
+          shade = 0
+        color = "#" + toHex(Math.round(255 * shade), 2) + "00" + toHex(Math.round(255 * (1 - shade)), 2)
+        physicalCtx.fillStyle = color
+        physicalCtx.fillRect(point.x * width, height1 * (1 - point.y),10, 10)
+      }
+    }
+  }
+
   function drawSurfaces()
   {
     if (surfaces.length == 0)
@@ -519,6 +520,19 @@ function main(scale, inputSurfaces)
     plotCurveOnSurface(surfaces[currentSurfaceId], pointOnSurface.y, true, "#f000f0");
   }
 
+  function drawSurfaceControls(surface, lineColor, dotColor)
+  {
+
+    for (var i = 0; i < surface.points[0].length; i++)
+    {
+      drawPolygon(getColumn(surface.points, i), doublePlotWidth, lineColor, dotColor)
+    }
+    for (var i = 0; i < surface.points.length; i++)
+    {
+      drawPolygon(surface.points[i], doublePlotWidth, lineColor, dotColor)
+    }
+  }
+
   function drawSurface(surface, isCurrent)
   {
 
@@ -535,6 +549,8 @@ function main(scale, inputSurfaces)
       lineColor = "#0000f5"
       dotColor = "#0000f0"
     }
+
+    drawSurfaceControls(surface, lineColor, dotColor)
     for (var i = 0; i < surface.points[0].length; i++)
     {
       drawPolygon(getColumn(surface.points, i), doublePlotWidth, lineColor, dotColor)
@@ -679,14 +695,96 @@ function main(scale, inputSurfaces)
     return skeletonPoints
   }
 
+  function getBilinearPatch(surface, u, v)
+  {
+    var p00, p01, p10, p11
+    rows = surface.points.length
+    columns = surface.points[0].length
+    if (rows == columns)
+    {
+      skeleton = tensor(surface, u, v)
+      bilinearPatch = skeleton[skeleton.length - 2]
+      p00 = bilinearPatch[0][0]
+      p10 = bilinearPatch[1][0]
+      p01 = bilinearPatch[0][1]
+      p11 = bilinearPatch[1][1]
+    }
+    else if (rows > columns)
+    {
+      skeleton = tensor(surface, u, v)
+      strip = skeleton[columns - 2]
+      points00 = getColumn(strip, 0)
+      points01 = getColumn(strip, 1)
+      points10 = getColumn(strip, 0)
+      points11 = getColumn(strip, 1)
+      points00.splice(0, 1)
+      points01.splice(points01.length - 1, 1)
+      points10.splice(0, 1)
+      points11.splice(points11.length - 1, 1)
+      p00 = deCasteljau(points00, u).pop()[0]
+      p01 = deCasteljau(points01, u).pop()[0]
+      p10 = deCasteljau(points10, u).pop()[0]
+      p11 = deCasteljau(points11, u).pop()[0]
+    }
+    else
+    {
+      skeleton = tensor(surface, u, v)
+      strip = skeleton[rows - 2]
+      points00 = $.extend(true, [], strip[0])
+      points01 = $.extend(true, [], strip[0])
+      points10 = $.extend(true, [], strip[1])
+      points11 = $.extend(true, [], strip[1])
+      points00.splice(points01.length - 1, 1)
+      points01.splice(0, 1)
+      points10.splice(points11.length - 1, 1)
+      points11.splice(0, 1)
+      p00 = deCasteljau(points00, v).pop()[0]
+      p01 = deCasteljau(points01, v).pop()[0]
+      p10 = deCasteljau(points10, v).pop()[0]
+      p11 = deCasteljau(points11, v).pop()[0]
+    }
+    return [p00, p01, p10, p11]
+  }
+
+  function getJacobian(surface, u, v)
+  {
+    if (surface.points.length < 2 || surface.points[0].length < 2)
+    {
+        return
+    }
+    bilinearPatch = getBilinearPatch(surface, u, v)
+    p00 = bilinearPatch[0]
+    p01 = bilinearPatch[1]
+    p10 = bilinearPatch[2]
+    p11 = bilinearPatch[3]
+
+    dxdu = (1 - v) * (p00.x - p10.x) + v * (p01.x - p11.x)
+    dydu = (1 - v) * (p00.y - p10.y) + v * (p01.y - p11.y)
+    dxdv = (1 - u) * (p00.x - p01.x) + u * (p10.x - p11.x)
+    dydv = (1 - u) * (p00.y - p01.y) + u * (p10.y - p11.y)
+    jacobianDeterminant = (dxdu * dydv) - (dydu * dxdv)
+    return jacobianDeterminant
+  }
+
+  function removeRowAndColumn(surface, rowIndex, columnIndex)
+  {
+    newSurface = jQuery.extend(true, {}, surface)
+    newSurface.points.splice(rowIndex, 1)
+    for (var i = 0; i < newSurface.points.length; i++)
+    {
+      newSurface.points[i].splice(columnIndex , 1)
+    }
+    return newSurface
+  }
+
   function getColumn(matrix, index)
   {
-    row = []
+    column = []
     for (var i = 0; i < matrix.length; i++)
     {
-      row.push(matrix[i][index])
+      column.push(matrix[i][index])
     }
-    return row
+    return column
   }
 
   function isExceedingCanvas()
@@ -739,6 +837,7 @@ function main(scale, inputSurfaces)
     physicalCanvas.height = height
     parameterCanvas.width = width
     parameterCanvas.height = height
+    drawJacobian()
     drawSurfaces()
     drawMouseOnSurface()
     drawParameterGrid()
