@@ -7,7 +7,7 @@ $( document ).ready(function()
 
 function main(inputSurfaces)
 {
-  var JACOBIAN_STARTUP_RANGE = 0.2
+  var JACOBIAN_STARTUP_RANGE = 0.25
   var HISTORY_MAX_SIZE = 50
   var HIGH_RES_PIX_PER_SAMPLE  = 3
 
