@@ -623,8 +623,7 @@ function main(scale, points)
     }
     //Write the t value
     curveCtx.font="30px Courier New"
-    var roundT = (Math.round(deCasteljauRatio*100)/100)
-    curveCtx.fillText("t=".concat(roundT), 30, 30)
+    curveCtx.fillText("t=" + deCasteljauRatio.toFixed(2), 30, 30)
   }
 
   //Adds to canvas a single curve (color are stronger if isCurrent is true)

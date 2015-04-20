@@ -1,16 +1,19 @@
-  $( document ).ready(function()
+$( document ).ready(function()
 {
-  var surface = {"name":"1","points":[[{"x":0.9620056819915771,"y":0.015994318008422853},{"x":0.5900056819915771,"y":0.30999431800842286},{"x":0.4880056819915771,"y":0.34563068389892576},{"x":0.34400568199157716,"y":0.37399431800842287},{"x":0.05600568199157715,"y":0.015994318008422853}],[{"x":0.8420056819915771,"y":0.29399431800842285},{"x":0.6260056819915771,"y":0.41199431800842284},{"x":0.47675697197995526,"y":0.45583186293404465},{"x":0.34813336963195524,"y":0.4519576580440447},{"x":0.28000568199157716,"y":0.43799431800842287}],[{"x":0.8060056819915772,"y":0.5636306838989258},{"x":0.6020056819915771,"y":0.5739943180084228},{"x":0.47400568199157717,"y":0.5476306838989258},{"x":0.37400568199157713,"y":0.5356306838989258},{"x":0.24163602646906146,"y":0.5388256964309386}],[{"x":0.8360056819915771,"y":0.7916306838989258},{"x":0.5921197951592064,"y":0.6700577648407936},{"x":0.45200568199157715,"y":0.6459943180084229},{"x":0.3204943951592063,"y":0.6464381648407935},{"x":0.20600568199157715,"y":0.6139943180084229}],[{"x":0.9780056819915771,"y":0.5659943180084228},{"x":0.5555446637969615,"y":0.740806299871406},{"x":0.44200568199157714,"y":0.7519943180084229},{"x":0.32843939315699844,"y":0.746096217763869},{"x":0.038005681991577146,"y":0.8719943180084229}]]}
+  var surface = {"name":"1","points":[[{"x":0.09800568199157715,"y":0.27399431800842283},{"x":0.34286000000000005,"y":0.348691985168457},{"x":0.49352,"y":0.368131985168457},{"x":0.5684051137924195,"y":0.36466761550903315},{"x":0.7916051137924195,"y":0.13361307067871092}],[{"x":0.25200568199157714,"y":0.4499943180084229},{"x":0.41252000000000005,"y":0.5025919975280762},{"x":0.49352460241317747,"y":0.5291553975868225},{"x":0.5939646024131775,"y":0.5097153975868226},{"x":0.78836,"y":0.3871399979400635}],[{"x":0.3056046024131775,"y":0.5680353975868225},{"x":0.4254846024131775,"y":0.5971953975868225},{"x":0.48866460241317744,"y":0.5955753975868225},{"x":0.6085446024131775,"y":0.5761353975868225},{"x":0.8312051137924195,"y":0.6544676155090332}],[{"x":0.28130460241317745,"y":0.6781953975868225},{"x":0.4044246024131775,"y":0.7041153975868225},{"x":0.4928051137924194,"y":0.6544676155090332},{"x":0.6926051137924194,"y":0.7228676155090332},{"x":0.8870051137924195,"y":0.7858676155090332}],[{"x":0.08420511379241946,"y":0.9157948862075805},{"x":0.3812051137924194,"y":0.7786676155090333},{"x":0.5216051137924195,"y":0.7948676155090333},{"x":0.7142051137924195,"y":0.8398676155090332},{"x":0.9020056819915772,"y":0.18999431800842284}]]}
   main([surface])
 })
 
 
 function main(inputSurfaces)
 {
-  var jacobianRange = 0.2
-  var shouldDrawJacobian = true
+  var JACOBIAN_STARTUP_RANGE = 0.2
   var HISTORY_MAX_SIZE = 50
   var HIGH_RES_PIX_PER_SAMPLE  = 3
+
+
+  var jacobianRange = JACOBIAN_STARTUP_RANGE
+  var shouldDrawJacobian = true
   var lastDrawTimestamp = (new Date).getTime()
   var lastLowResDrawn = 0
   var history = [], forwardHistory = []
@@ -218,6 +221,7 @@ function main(inputSurfaces)
         break
       //J
       case 74:
+        jacobianRange = JACOBIAN_STARTUP_RANGE
         shouldDrawJacobian = !shouldDrawJacobian
         redraw()
         break
@@ -482,6 +486,11 @@ function main(inputSurfaces)
 
   function drawJacobianRow(u, pixelsPerSample, step, movementTime)
   {
+
+    if(surfaces.length == 0)
+    {
+      return
+    }
     for (var v = 0; v < 1; v += step)
     {
       point = tensor(surfaces[currentSurfaceId], u, v).pop()[0][0]
@@ -511,6 +520,10 @@ function main(inputSurfaces)
 
   function drawJacobian()
   {
+    if(surfaces.length == 0)
+    {
+      return
+    }
     if (shouldDrawJacobian)
     {
       drawJacobianRow(0, HIGH_RES_PIX_PER_SAMPLE, HIGH_RES_PIX_PER_SAMPLE / (2 * width), lastDrawTimestamp)
@@ -862,6 +875,20 @@ function main(inputSurfaces)
     physicalCtx.font="15px Courier New"
     physicalCtx.fillText("[j] Jacobian: " + jacobianStatus, 5, 20)
     physicalCtx.fillText("[c] De-Casteljau: " + deCasteljauStatus, 5, 35)
+
+    if (mouseOnSurface == -1)
+    {
+      return
+    }
+    parameterCtx.fillStyle="#000000"
+    parameterCtx.font="15px Courier New"
+    parameterCtx.fillText("(" + mouseOnSurface.x.toFixed(2) + ", " + mouseOnSurface.y.toFixed(2) +")", 5, 20)
+    jacVal = getJacobian(surfaces[currentSurfaceId], mouseOnSurface.x, mouseOnSurface.y)
+    if (isNaN(jacVal))
+    {
+      return
+    }
+    parameterCtx.fillText("Jacobian: " + jacVal.toFixed(3), 5, 35)
   }
 
   function redraw()
