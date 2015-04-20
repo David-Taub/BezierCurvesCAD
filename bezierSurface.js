@@ -9,7 +9,7 @@ function main(inputSurfaces)
 {
   var JACOBIAN_STARTUP_RANGE = 0.25
   var HISTORY_MAX_SIZE = 50
-  var HIGH_RES_PIX_PER_SAMPLE  = 3
+  var HIGH_RES_PIX_PER_SAMPLE  = 5
 
 
   var jacobianRange = JACOBIAN_STARTUP_RANGE
