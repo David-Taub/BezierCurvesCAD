@@ -43,7 +43,7 @@ function main(inputSurfaces)
     $("#downloadButton").click(saveSurfaces)
     $("#surfacesList").change(changeCurrentSurface)
     $("#parameterCanvas").mousemove(mouseMoveParameter)
-    $("#parameterCanvas").mouseleave(function () {mouseOnSurface = -1;redraw()})
+    $("#parameterCanvas").mouseleave(function () {mouseOnSurface = -1})
     $("#parameterCanvas").mouseup(mouseUpParameter)
     $("#physicalCanvas").mousemove(drag)
     $("#physicalCanvas").mousedown(startDrag)
@@ -510,6 +510,8 @@ function main(inputSurfaces)
       color = "#" + toHex(Math.round(255 * shade), 2) + "00" + toHex(Math.round(255 * (1 - shade)), 2)
       physicalCtx.fillStyle = color
       physicalCtx.fillRect(point.x * width, height1 * (1 - point.y), pixelsPerSample, pixelsPerSample)
+      parameterCtx.fillStyle = color
+      parameterCtx.fillRect(v * width, height1 * (1 - u), pixelsPerSample, pixelsPerSample)
     }
     if (u >= 1 || (lastDrawTimestamp > movementTime))
     {
@@ -983,7 +985,10 @@ function main(inputSurfaces)
   function mouseMoveParameter(ev)
   {
     mouseOnSurface = getXY(ev, parameterCanvas)
-    redraw()
+    if(!shouldDrawJacobian)
+    {
+      redraw()
+    }
   }
   function toHex(number, size)
   {
