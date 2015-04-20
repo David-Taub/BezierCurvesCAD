@@ -1,13 +1,18 @@
-$( document ).ready(function()
+  $( document ).ready(function()
 {
-  var surface = {"name":"1","points":[[{"x":0.9795918367346939,"y":0.0268707275390625},{"x":0.7602040816326531,"y":0.20034011529416454},{"x":0.11938775510204082,"y":0.2670067923409598}],[{"x":0.09489795918367347,"y":0.9846938775510204},{"x":0.08979591836734693,"y":0.7357142857142858},{"x":0.9816326530612245,"y":0.9846938775510204}]]}
-  main( .4, [surface])
+  var surface = {"name":"1","points":[[{"x":0.9620056819915771,"y":0.015994318008422853},{"x":0.5900056819915771,"y":0.30999431800842286},{"x":0.4880056819915771,"y":0.34563068389892576},{"x":0.34400568199157716,"y":0.37399431800842287},{"x":0.05600568199157715,"y":0.015994318008422853}],[{"x":0.8420056819915771,"y":0.29399431800842285},{"x":0.6260056819915771,"y":0.41199431800842284},{"x":0.47675697197995526,"y":0.45583186293404465},{"x":0.34813336963195524,"y":0.4519576580440447},{"x":0.28000568199157716,"y":0.43799431800842287}],[{"x":0.8060056819915772,"y":0.5636306838989258},{"x":0.6020056819915771,"y":0.5739943180084228},{"x":0.47400568199157717,"y":0.5476306838989258},{"x":0.37400568199157713,"y":0.5356306838989258},{"x":0.24163602646906146,"y":0.5388256964309386}],[{"x":0.8360056819915771,"y":0.7916306838989258},{"x":0.5921197951592064,"y":0.6700577648407936},{"x":0.45200568199157715,"y":0.6459943180084229},{"x":0.3204943951592063,"y":0.6464381648407935},{"x":0.20600568199157715,"y":0.6139943180084229}],[{"x":0.9780056819915771,"y":0.5659943180084228},{"x":0.5555446637969615,"y":0.740806299871406},{"x":0.44200568199157714,"y":0.7519943180084229},{"x":0.32843939315699844,"y":0.746096217763869},{"x":0.038005681991577146,"y":0.8719943180084229}]]}
+  main([surface])
 })
 
 
-function main(scale, inputSurfaces)
+function main(inputSurfaces)
 {
+  var jacobianRange = 0.2
+  var shouldDrawJacobian = true
   var HISTORY_MAX_SIZE = 50
+  var HIGH_RES_PIX_PER_SAMPLE  = 3
+  var lastDrawTimestamp = (new Date).getTime()
+  var lastLowResDrawn = 0
   var history = [], forwardHistory = []
   var timer, deCasteljauRatio = 1
   var surfaces
@@ -19,12 +24,13 @@ function main(scale, inputSurfaces)
   var width, height, height1, plotWidth, doublePlotWidth,  dragId = -1
 
   init()
-  resize()
+  redraw()
 
   function init()
   {
     surfaces = inputSurfaces
     shouldDrawSkeleton = true
+
     updateSurfacesList()
     physicalCanvas = $("#physicalCanvas").get(0)
     physicalCtx = physicalCanvas.getContext("2d")
@@ -34,16 +40,15 @@ function main(scale, inputSurfaces)
     $("#downloadButton").click(saveSurfaces)
     $("#surfacesList").change(changeCurrentSurface)
     $("#parameterCanvas").mousemove(mouseMoveParameter)
-    $("#parameterCanvas").mouseleave(function () {mouseOnSurface = -1;resize()})
+    $("#parameterCanvas").mouseleave(function () {mouseOnSurface = -1;redraw()})
     $("#parameterCanvas").mouseup(mouseUpParameter)
     $("#physicalCanvas").mousemove(drag)
     $("#physicalCanvas").mousedown(startDrag)
     $("#physicalCanvas").mouseup(stopDrag)
-    $("input:radio").change(resize)
+    $("input:radio").change(redraw)
     //Mobile support
     $(document).keyup(onKeyUp)
-    $(window).resize(resize)
-    $("#radio1").prop("checked", true)
+    $("#radio10").prop("checked", true)
   }
 
   function undo()
@@ -61,7 +66,7 @@ function main(scale, inputSurfaces)
       currentSurfaceId = 0
     }
     updateSurfacesList()
-    resize()
+    redraw()
   }
 
   function redo()
@@ -77,7 +82,7 @@ function main(scale, inputSurfaces)
       currentSurfaceId = 0
     }
     updateSurfacesList()
-    resize()
+    redraw()
   }
 
   function pushToHistory()
@@ -141,7 +146,7 @@ function main(scale, inputSurfaces)
   {
     currentSurfaceId = $("#surfacesList")[0].selectedIndex
     pointOnSurface = -1
-    resize()
+    redraw()
   }
 
   //Load surfaces from file which is selected in "browse..." element
@@ -155,7 +160,7 @@ function main(scale, inputSurfaces)
     {
       pushToHistory()
       surfaces = JSON.parse(reader.result)
-      resize()
+      redraw()
     }
 
     // Read in the image file as a data URL.
@@ -209,7 +214,12 @@ function main(scale, inputSurfaces)
       //C
       case 67:
         shouldDrawSkeleton = !shouldDrawSkeleton
-        resize()
+        redraw()
+        break
+      //J
+      case 74:
+        shouldDrawJacobian = !shouldDrawJacobian
+        redraw()
         break
       //Y
       case 89:
@@ -226,7 +236,7 @@ function main(scale, inputSurfaces)
           currentSurfaceId = 0
         }
         updateSurfacesList()
-        resize()
+        redraw()
         break
     }
   }
@@ -243,7 +253,7 @@ function main(scale, inputSurfaces)
     surfaces.splice(currentSurfaceId, 1, newSurfaces[0], newSurfaces[1], newSurfaces[2], newSurfaces[3])
 
     updateSurfacesList()
-    resize()
+    redraw()
   }
   //If deCasteljauRatio is in the current curve range, make the current curve
   // into two surfaces with the exact same shape as the current curve, where their
@@ -317,7 +327,7 @@ function main(scale, inputSurfaces)
       }]
       currentSurfaceId = 0
       updateSurfacesList()
-      resize()
+      redraw()
       return
     }
     surface = surfaces[currentSurfaceId]
@@ -357,7 +367,7 @@ function main(scale, inputSurfaces)
       surface = transposeSurface(surface)
     }
     surfaces[currentSurfaceId] = surface
-    resize()
+    redraw()
     return
   }
 
@@ -385,7 +395,7 @@ function main(scale, inputSurfaces)
       }
     }
     removeCurrentIfEmpty()
-    resize()
+    redraw()
   }
 
   function removeCurrentIfEmpty()
@@ -470,27 +480,40 @@ function main(scale, inputSurfaces)
     }
   }
 
+  function drawJacobianRow(u, pixelsPerSample, step, movementTime)
+  {
+    for (var v = 0; v < 1; v += step)
+    {
+      point = tensor(surfaces[currentSurfaceId], u, v).pop()[0][0]
+      jacVal = getJacobian(surfaces[currentSurfaceId], u, v)
+      shade = ((jacobianRange / 2) + jacVal) / jacobianRange
+      if (shade > 1 || shade < 0)
+      {
+        /*
+        So the colors would use the full blue - red range we
+        start of with a small determinant range and increase it if shade exceed
+        it.
+        */
+        jacobianRange *= 1.5
+        redraw()
+        return
+      }
+      color = "#" + toHex(Math.round(255 * shade), 2) + "00" + toHex(Math.round(255 * (1 - shade)), 2)
+      physicalCtx.fillStyle = color
+      physicalCtx.fillRect(point.x * width, height1 * (1 - point.y), pixelsPerSample, pixelsPerSample)
+    }
+    if (u >= 1 || (lastDrawTimestamp > movementTime))
+    {
+      return
+    }
+    setTimeout(function(){drawJacobianRow(u + step, pixelsPerSample, step, movementTime)})
+  }
+
   function drawJacobian()
   {
-    //return
-    physicalCtx.lineWidth = plotWidth
-    var step = 10 / width
-    for (var u = 0; u < 1; u += step)
+    if (shouldDrawJacobian)
     {
-      for (var v = 0; v < 1; v += step)
-      {
-
-        point = tensor(surfaces[currentSurfaceId], u, v).pop()[0][0]
-        jacVal = getJacobian(surfaces[currentSurfaceId], u, v)
-        shade = (0.5 + jacVal) / 1
-        if (shade > 1)
-          shade = 1
-        if (shade < 0)
-          shade = 0
-        color = "#" + toHex(Math.round(255 * shade), 2) + "00" + toHex(Math.round(255 * (1 - shade)), 2)
-        physicalCtx.fillStyle = color
-        physicalCtx.fillRect(point.x * width, height1 * (1 - point.y),10, 10)
-      }
+      drawJacobianRow(0, HIGH_RES_PIX_PER_SAMPLE, HIGH_RES_PIX_PER_SAMPLE / (2 * width), lastDrawTimestamp)
     }
   }
 
@@ -823,13 +846,31 @@ function main(scale, inputSurfaces)
     }
   }
 
-  function resize()
+  function writeStatus()
   {
+    var deCasteljauStatus = "Off"
+    var jacobianStatus = "Off"
+    if (shouldDrawJacobian)
+    {
+      jacobianStatus = "On"
+    }
+    if (shouldDrawSkeleton)
+    {
+      deCasteljauStatus = "On"
+    }
+    physicalCtx.fillStyle="#000000"
+    physicalCtx.font="15px Courier New"
+    physicalCtx.fillText("[j] Jacobian: " + jacobianStatus, 5, 20)
+    physicalCtx.fillText("[c] De-Casteljau: " + deCasteljauStatus, 5, 35)
+  }
 
+  function redraw()
+  {
+    lastDrawTimestamp = (new Date).getTime()
     physicalCtx.clearRect(0,0, width, height)
-
     parameterCtx.clearRect(0,0, width, height)
-    height = width = Math.round(window.innerWidth * scale)
+    height = physicalCtx.canvas.height
+    width = physicalCtx.canvas.width
     height1 = height-1
     plotWidth = Math.max(1, Math.round(width / 250))
     doublePlotWidth = 2 * plotWidth
@@ -841,6 +882,7 @@ function main(scale, inputSurfaces)
     drawSurfaces()
     drawMouseOnSurface()
     drawParameterGrid()
+    writeStatus()
   }
 
 
@@ -852,8 +894,9 @@ function main(scale, inputSurfaces)
     }
     //No point is chosen
     if (dragId == -1) return
+
     surfaces[currentSurfaceId].points[dragId.i][dragId.j] = getXY(ev, physicalCanvas)
-    resize()
+    redraw()
     ev.preventDefault
   }
   function calcDistanceSquare(a, b)
@@ -894,7 +937,7 @@ function main(scale, inputSurfaces)
       }
     }
     surfaces[currentSurfaceId].points[dragId.i][dragId.j] = clickCoordinates
-    resize()
+    redraw()
     ev.preventDefault()
   }
 
@@ -907,13 +950,13 @@ function main(scale, inputSurfaces)
   function mouseUpParameter(ev)
   {
     pointOnSurface = getXY(ev, parameterCanvas)
-    resize()
+    redraw()
   }
 
   function mouseMoveParameter(ev)
   {
     mouseOnSurface = getXY(ev, parameterCanvas)
-    resize()
+    redraw()
   }
   function toHex(number, size)
   {
