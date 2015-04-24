@@ -1,18 +1,17 @@
 $( document ).ready(function()
 {
-  var surface = {"name":"1","points":[[{"x":0.09800568199157715,"y":0.27399431800842283},{"x":0.34286000000000005,"y":0.348691985168457},{"x":0.49352,"y":0.368131985168457},{"x":0.5684051137924195,"y":0.36466761550903315},{"x":0.7916051137924195,"y":0.13361307067871092}],[{"x":0.25200568199157714,"y":0.4499943180084229},{"x":0.41252000000000005,"y":0.5025919975280762},{"x":0.49352460241317747,"y":0.5291553975868225},{"x":0.5939646024131775,"y":0.5097153975868226},{"x":0.78836,"y":0.3871399979400635}],[{"x":0.3056046024131775,"y":0.5680353975868225},{"x":0.4254846024131775,"y":0.5971953975868225},{"x":0.48866460241317744,"y":0.5955753975868225},{"x":0.6085446024131775,"y":0.5761353975868225},{"x":0.8312051137924195,"y":0.6544676155090332}],[{"x":0.28130460241317745,"y":0.6781953975868225},{"x":0.4044246024131775,"y":0.7041153975868225},{"x":0.4928051137924194,"y":0.6544676155090332},{"x":0.6926051137924194,"y":0.7228676155090332},{"x":0.8870051137924195,"y":0.7858676155090332}],[{"x":0.08420511379241946,"y":0.9157948862075805},{"x":0.3812051137924194,"y":0.7786676155090333},{"x":0.5216051137924195,"y":0.7948676155090333},{"x":0.7142051137924195,"y":0.8398676155090332},{"x":0.9020056819915772,"y":0.18999431800842284}]]}
+  var surface = {"name":"1","points":[[{"x":0.038,"y":0.242},{"x":0.34286000000000005,"y":0.348691985168457},{"x":0.49352,"y":0.368131985168457},{"x":0.5684051137924195,"y":0.36466761550903315},{"x":0.844,"y":0.066}],[{"x":0.25200568199157714,"y":0.4499943180084229},{"x":0.41252000000000005,"y":0.5025919975280762},{"x":0.49352460241317747,"y":0.5291553975868225},{"x":0.5939646024131775,"y":0.5097153975868226},{"x":0.67,"y":0.4051999969482422}],[{"x":0.3056046024131775,"y":0.5680353975868225},{"x":0.4254846024131775,"y":0.5971953975868225},{"x":0.48866460241317744,"y":0.5955753975868225},{"x":0.6085446024131775,"y":0.5761353975868225},{"x":0.768,"y":0.5491999969482422}],[{"x":0.28130460241317745,"y":0.6781953975868225},{"x":0.4044246024131775,"y":0.7041153975868225},{"x":0.4928051137924194,"y":0.6544676155090332},{"x":0.6926051137924194,"y":0.7228676155090332},{"x":0.794,"y":0.75}],[{"x":0.08420511379241946,"y":0.9157948862075805},{"x":0.3812051137924194,"y":0.7786676155090333},{"x":0.5216051137924195,"y":0.7948676155090333},{"x":0.7142051137924195,"y":0.8398676155090332},{"x":0.986,"y":0.952}]]}
   main([surface])
 })
 
 
 function main(inputSurfaces)
 {
-  var JACOBIAN_STARTUP_RANGE = 0.25
   var HISTORY_MAX_SIZE = 50
   var HIGH_RES_PIX_PER_SAMPLE  = 5
+  var LOW_RES_PIX_PER_SAMPLE  = 30
 
 
-  var jacobianRange = JACOBIAN_STARTUP_RANGE
   var shouldDrawJacobian = true
   var lastDrawTimestamp = (new Date).getTime()
   var lastLowResDrawn = 0
@@ -484,9 +483,31 @@ function main(inputSurfaces)
     }
   }
 
-  function drawJacobianRow(u, pixelsPerSample, step, movementTime)
+  function findMinMaxJacobian(step)
   {
+    min = Number.POSITIVE_INFINITY
+    max = Number.NEGATIVE_INFINITY
+    for (var u = 0; u < 1; u += step)
+    {
+      for (var v = 0; v < 1; v += step)
+      {
+        point = tensor(surfaces[currentSurfaceId], u, v).pop()[0][0]
+        jacVal = getJacobian(surfaces[currentSurfaceId], u, v)
+        if (jacVal < min)
+        {
+          min = jacVal
+        }
+        if (jacVal > max)
+        {
+          max = jacVal
+        }
+      }
+    }
+    return [min, max]
+  }
 
+  function drawJacobianRow(u, pixelsPerSample, step, movementTime, min, max)
+  {
     if(surfaces.length == 0)
     {
       return
@@ -495,17 +516,14 @@ function main(inputSurfaces)
     {
       point = tensor(surfaces[currentSurfaceId], u, v).pop()[0][0]
       jacVal = getJacobian(surfaces[currentSurfaceId], u, v)
-      shade = ((jacobianRange / 2) + jacVal) / jacobianRange
-      if (shade > 1 || shade < 0)
+      shade = (jacVal - min) / (max - min)
+      if (shade > 1)
       {
-        /*
-        So the colors would use the full blue - red range we
-        start of with a small determinant range and increase it if shade exceed
-        it.
-        */
-        jacobianRange *= 1.5
-        redraw()
-        return
+        shade = 1
+      }
+      if ( shade < 0)
+      {
+        shade = 0
       }
       color = "#" + toHex(Math.round(255 * shade), 2) + "00" + toHex(Math.round(255 * (1 - shade)), 2)
       physicalCtx.fillStyle = color
@@ -517,7 +535,7 @@ function main(inputSurfaces)
     {
       return
     }
-    setTimeout(function(){drawJacobianRow(u + step, pixelsPerSample, step, movementTime)})
+    setTimeout(function(){drawJacobianRow(u + step, pixelsPerSample, step, movementTime, min, max)})
   }
 
   function drawJacobian()
@@ -528,7 +546,10 @@ function main(inputSurfaces)
     }
     if (shouldDrawJacobian)
     {
-      drawJacobianRow(0, HIGH_RES_PIX_PER_SAMPLE, HIGH_RES_PIX_PER_SAMPLE / (2 * width), lastDrawTimestamp)
+      minMax = findMinMaxJacobian(LOW_RES_PIX_PER_SAMPLE.toFixed(2) / width)
+      min = minMax[0]
+      max = minMax[1]
+      drawJacobianRow(0, HIGH_RES_PIX_PER_SAMPLE, HIGH_RES_PIX_PER_SAMPLE / (2 * width), lastDrawTimestamp, min, max)
     }
   }
 
