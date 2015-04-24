@@ -220,7 +220,6 @@ function main(inputSurfaces)
         break
       //J
       case 74:
-        jacobianRange = JACOBIAN_STARTUP_RANGE
         shouldDrawJacobian = !shouldDrawJacobian
         redraw()
         break
