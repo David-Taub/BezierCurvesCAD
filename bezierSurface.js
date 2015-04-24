@@ -511,6 +511,10 @@ function main(inputSurfaces)
     {
       return
     }
+    if (u >= 1 || (lastDrawTimestamp > movementTime))
+    {
+      return
+    }
     for (var v = 0; v < 1; v += step)
     {
       point = tensor(surfaces[currentSurfaceId], u, v).pop()[0][0]
@@ -529,10 +533,6 @@ function main(inputSurfaces)
       physicalCtx.fillRect(point.x * width, height1 * (1 - point.y), pixelsPerSample, pixelsPerSample)
       parameterCtx.fillStyle = color
       parameterCtx.fillRect(v * width, height1 * (1 - u), pixelsPerSample, pixelsPerSample)
-    }
-    if (u >= 1 || (lastDrawTimestamp > movementTime))
-    {
-      return
     }
     setTimeout(function(){drawJacobianRow(u + step, pixelsPerSample, step, movementTime, min, max)})
   }
@@ -772,8 +772,8 @@ function main(inputSurfaces)
       skeleton = tensor(surface, u, v)
       strip = skeleton[columns - 2]
       points00 = getColumn(strip, 0)
-      points01 = getColumn(strip, 1)
-      points10 = getColumn(strip, 0)
+      points01 = getColumn(strip, 0)
+      points10 = getColumn(strip, 1)
       points11 = getColumn(strip, 1)
       points00.splice(0, 1)
       points01.splice(points01.length - 1, 1)
