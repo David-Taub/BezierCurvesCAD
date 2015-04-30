@@ -528,7 +528,7 @@ function main(inputSurfaces)
       {
         shade = 0
       }
-      color = "#" + toHex(Math.round(255 * shade), 2) + "00" + toHex(Math.round(255 * (1 - shade)), 2)
+      color = shadeToColor(shade)
       physicalCtx.fillStyle = color
       physicalCtx.fillRect(point.x * width, height1 * (1 - point.y), pixelsPerSample, pixelsPerSample)
       parameterCtx.fillStyle = color
@@ -1074,5 +1074,43 @@ function main(inputSurfaces)
       x : (ev.clientX - rect.left) / width,
       y : (height1 - (ev.clientY - rect.top)) / height
     }
+  }
+   // takes value between 0 to 1 and returns an rgba value
+  function shadeToColor(value)
+  {
+
+    wl = Math.round(((780 - 380) * value) + 380)
+
+    if (wl >= 380 && wl < 440)
+    {
+        R = -1 * (wl - 440) / (440 - 380);
+        G = 0;
+        B = 1;
+    } else if (wl >= 440 && wl < 490) {
+       R = 0;
+       G = (wl - 440) / (490 - 440);
+       B = 1;
+    } else if (wl >= 490 && wl < 510) {
+        R = 0;
+        G = 1;
+        B = -1 * (wl - 510) / (510 - 490);
+    } else if (wl >= 510 && wl < 580) {
+        R = (wl - 510) / (580 - 510);
+        G = 1;
+        B = 0;
+    } else if (wl >= 580 && wl < 645) {
+        R = 1;
+        G = -1 * (wl - 645) / (645 - 580);
+        B = 0.0;
+    } else if (wl >= 645 && wl <= 780) {
+        R = 1;
+        G = 0;
+        B = 0;
+    } else {
+        R = 0;
+        G = 0;
+        B = 0;
+    }
+    return "rgb(" + (R * 100) + "%," + (G * 100) + "%," + (B * 100) + "%)";
   }
 }
