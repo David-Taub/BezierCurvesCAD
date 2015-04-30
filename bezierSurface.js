@@ -1,26 +1,6 @@
 $( document ).ready(function()
 {
-  var surface = {"name":"1","points":[
-    [{"x":0.1,"y":0.1},
-    {"x":0.3,"y":0.1},
-    {"x":0.5,"y":0.1},
-    {"x":0.7,"y":0.1}],
-
-    [{"x":0.1,"y":0.3},
-    {"x":0.3,"y":0.3},
-    {"x":0.5,"y":0.3},
-    {"x":0.7,"y":0.3}],
-
-    [{"x":0.1,"y":0.5},
-    {"x":0.3,"y":0.5},
-    {"x":0.5,"y":0.5},
-    {"x":0.7,"y":0.5}],
-
-    [{"x":0.1,"y":0.7},
-    {"x":0.3,"y":0.7},
-    {"x":0.5,"y":0.7},
-    {"x":0.7,"y":0.7}]
-    ]}
+  var surface = {"name":"1","points":[[{"x":0.038,"y":0.242},{"x":0.34286000000000005,"y":0.348691985168457},{"x":0.49352,"y":0.368131985168457},{"x":0.5684051137924195,"y":0.36466761550903315},{"x":0.844,"y":0.066}],[{"x":0.25200568199157714,"y":0.4499943180084229},{"x":0.41252000000000005,"y":0.5025919975280762},{"x":0.49352460241317747,"y":0.5291553975868225},{"x":0.5939646024131775,"y":0.5097153975868226},{"x":0.67,"y":0.4051999969482422}],[{"x":0.3056046024131775,"y":0.5680353975868225},{"x":0.4254846024131775,"y":0.5971953975868225},{"x":0.48866460241317744,"y":0.5955753975868225},{"x":0.6085446024131775,"y":0.5761353975868225},{"x":0.768,"y":0.5491999969482422}],[{"x":0.28130460241317745,"y":0.6781953975868225},{"x":0.4044246024131775,"y":0.7041153975868225},{"x":0.4928051137924194,"y":0.6544676155090332},{"x":0.6926051137924194,"y":0.7228676155090332},{"x":0.794,"y":0.75}],[{"x":0.08420511379241946,"y":0.9157948862075805},{"x":0.3812051137924194,"y":0.7786676155090333},{"x":0.5216051137924195,"y":0.7948676155090333},{"x":0.7142051137924195,"y":0.8398676155090332},{"x":0.986,"y":0.952}]]}
   main([surface])
 })
 
@@ -39,7 +19,7 @@ function main(inputSurfaces)
   var timer, deCasteljauRatio = 1
   var surfaces
   var pointOnSurface = -1
-  var mouseOnSurface = -1
+  var mouseOnParameterSpace = -1
   var currentSurfaceId = 0
   var physicalCanvas, physicalCtx
   var parameterCanvas, parameterCtx
@@ -62,7 +42,7 @@ function main(inputSurfaces)
     $("#downloadButton").click(saveSurfaces)
     $("#surfacesList").change(changeCurrentSurface)
     $("#parameterCanvas").mousemove(mouseMoveParameter)
-    $("#parameterCanvas").mouseleave(function () {mouseOnSurface = -1})
+    $("#parameterCanvas").mouseleave(function () {mouseOnParameterSpace = -1})
     $("#parameterCanvas").mouseup(mouseUpParameter)
     $("#physicalCanvas").mousemove(drag)
     $("#physicalCanvas").mousedown(startDrag)
@@ -534,36 +514,43 @@ function main(inputSurfaces)
     return [min - Number.EPSILON, max + Number.EPSILON]
   }
 
-  function drawJacobianRow(u, pixelsPerSample, step, movementTime, min, max)
+  function drawJacobianRow(v, pixelsPerSample, step, movementTime, min, max)
   {
     if(surfaces.length == 0)
     {
       return
     }
-    if (u >= 1 || (lastDrawTimestamp > movementTime))
+    if (v >= 1 || (lastDrawTimestamp > movementTime))
     {
       return
     }
-    for (var v = 0; v < 1; v += step)
+    for (var u = 0; u < 1; u += step)
     {
       point = tensor(surfaces[currentSurfaceId], u, v).pop()[0][0]
       jacVal = getJacobian(surfaces[currentSurfaceId], u, v)
-      shade = (jacVal - min) / (max - min)
-      if (shade > 1)
+      if (Math.abs(jacVal) < 0.001)
       {
-        shade = 1
+        color = "#000000"
       }
-      if ( shade < 0)
+      else
       {
-        shade = 0
+        shade = (jacVal - min) / (max - min)
+        if (shade > 1)
+        {
+          shade = 1
+        }
+        if ( shade < 0)
+        {
+          shade = 0
+        }
+        color = shadeToColor(shade)
       }
-      color = shadeToColor(shade)
       physicalCtx.fillStyle = color
       physicalCtx.fillRect(point.x * width, height1 * (1 - point.y), pixelsPerSample, pixelsPerSample)
       parameterCtx.fillStyle = color
-      parameterCtx.fillRect(v * width, height1 * (1 - u), pixelsPerSample, pixelsPerSample)
+      parameterCtx.fillRect(u * width, height1 * (1 - v), pixelsPerSample, pixelsPerSample)
     }
-    setTimeout(function(){drawJacobianRow(u + step, pixelsPerSample, step, movementTime, min, max)})
+    setTimeout(function(){drawJacobianRow(v + step, pixelsPerSample, step, movementTime, min, max)})
   }
 
   function drawJacobian()
@@ -909,7 +896,7 @@ function main(inputSurfaces)
     }
   }
 
-  function writeStatus()
+  function writeStatus(physicalMouseCoordinates)
   {
     var deCasteljauStatus = "Off"
     var jacobianStatus = "Off"
@@ -926,15 +913,17 @@ function main(inputSurfaces)
     physicalCtx.fillText("[j] Jacobian: " + jacobianStatus, 5, 20)
     physicalCtx.fillText("[c] De-Casteljau: " + deCasteljauStatus, 5, 35)
 
-    if (mouseOnSurface == -1)
+    if (mouseOnParameterSpace == -1)
     {
       return
     }
     parameterCtx.fillStyle="#000000"
-    parameterCtx.font="15px Courier New"
-    parameterCtx.fillText("(" + mouseOnSurface.x.toFixed(2) + ", " + mouseOnSurface.y.toFixed(2) +")", 5, 20)
-    jacVal = getJacobian(surfaces[currentSurfaceId], mouseOnSurface.x, mouseOnSurface.y)
-    parameterCtx.fillText("Jacobian: " + jacVal.toFixed(3), 5, 35)
+    parameterCtx.font="bold 15px Courier New"
+    parameterCtx.fillText("Param = (" + mouseOnParameterSpace.x.toFixed(2) + ", " + mouseOnParameterSpace.y.toFixed(2) +")", 5, 20)
+    parameterCtx.fillText("Physi: (" + physicalMouseCoordinates.x.toFixed(2) + ", " + physicalMouseCoordinates.y.toFixed(2) +")", 5, 35)
+
+    jacVal = getJacobian(surfaces[currentSurfaceId], mouseOnParameterSpace.x, mouseOnParameterSpace.y)
+    parameterCtx.fillText("Jacobian: " + jacVal.toFixed(3), 5, 50)
   }
 
   function redraw()
@@ -953,9 +942,9 @@ function main(inputSurfaces)
     parameterCanvas.height = height
     drawJacobian()
     drawSurfaces()
-    drawMouseOnSurface()
+    physicalMouseCoordinates = drawmouseOnParameterSpace()
     drawParameterGrid()
-    writeStatus()
+    writeStatus(physicalMouseCoordinates)
   }
 
 
@@ -1028,7 +1017,7 @@ function main(inputSurfaces)
 
   function mouseMoveParameter(ev)
   {
-    mouseOnSurface = getXY(ev, parameterCanvas)
+    mouseOnParameterSpace = getXY(ev, parameterCanvas)
     if(!shouldDrawJacobian)
     {
       redraw()
@@ -1043,7 +1032,7 @@ function main(inputSurfaces)
 
   function drawSkeleton()
   {
-    skeletonPoints = tensor(surfaces[currentSurfaceId], mouseOnSurface.y, mouseOnSurface.x)
+    skeletonPoints = tensor(surfaces[currentSurfaceId], mouseOnParameterSpace.x, mouseOnParameterSpace.y)
     for (var k = 1; k < skeletonPoints.length; k++)
     {
       shade = Math.round((240) * k / (skeletonPoints.length - 2) + 10)
@@ -1057,33 +1046,33 @@ function main(inputSurfaces)
         drawPolygon(getColumn(skeletonPoints[k], j), plotWidth, lineColor, "#000000", false, -1)
       }
     }
+    return skeletonPoints.pop()[0][0]
   }
 
-  function drawMouseOnSurface()
+  function drawmouseOnParameterSpace()
   {
-    if (surfaces.length == 0 || surfaces[currentSurfaceId].points.length == 0 || mouseOnSurface == -1)
+    if (surfaces.length == 0 || surfaces[currentSurfaceId].points.length == 0 || mouseOnParameterSpace == -1)
     {
       return
     }
 
-    drawParameterLine(mouseOnSurface.x, false, "#00f000")
-    drawParameterLine(mouseOnSurface.y, true, "#00f000")
+    drawParameterLine(mouseOnParameterSpace.x, false, "#00f000")
+    drawParameterLine(mouseOnParameterSpace.y, true, "#00f000")
 
     if (shouldDrawSkeleton)
     {
-      drawSkeleton()
+      physicalMouseCoordinates = drawSkeleton()
     }
     else
     {
       //Draw curves
-      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnSurface.x, false, "#00f000");
-      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnSurface.y, true, "#00f000");
+      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnParameterSpace.x, false, "#00f000");
+      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnParameterSpace.y, true, "#00f000");
       //Draw dot
-      point = tensor(surfaces[currentSurfaceId], mouseOnSurface.y, mouseOnSurface.x).pop()[0]
-      drawPolygon(point, plotWidth, "#000000", "#000000", false, -1)
+      physicalMouseCoordinates = tensor(surfaces[currentSurfaceId], mouseOnParameterSpace.x, mouseOnParameterSpace.y).pop()[0]
+      drawPolygon(physicalMouseCoordinates, plotWidth, "#000000", "#000000", false, -1)
     }
-
-
+    return physicalMouseCoordinates
   }
 
   //Get x,y between 0 to 1 of given click event
