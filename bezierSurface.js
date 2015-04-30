@@ -461,7 +461,7 @@ function main(inputSurfaces)
   //Add to canvas lines and dots of given polygon
   // (polygon is open, last and first dots are not drawn)
   // used to draw the control polygon and the DeCasteljau skeleton
-  function drawPolygon(polygonPoints, lineWidth, lineColor, dotColor)
+  function drawPolygon(polygonPoints, lineWidth, lineColor, dotColor, isCurrent, lineIndex)
   {
     physicalCtx.lineWidth = lineWidth
     physicalCtx.beginPath()
@@ -479,6 +479,15 @@ function main(inputSurfaces)
       physicalCtx.strokeStyle = lineColor
       physicalCtx.lineTo(polygonPoints[i].x * width, height1 * (1 - polygonPoints[i].y))
       physicalCtx.stroke()
+      if (isCurrent && lineIndex != -1)
+      {
+        //Write Point id
+        physicalCtx.fillStyle = "#000000"
+        physicalCtx.font="15px Courier New"
+        pointString = "P(" + lineIndex.toString() + "," + i.toString() + ")"
+        console.log(pointString)
+        physicalCtx.fillText(pointString, width * polygonPoints[i].x + 10, height1 * ( 1- polygonPoints[i].y))
+      }
     }
   }
 
@@ -578,16 +587,21 @@ function main(inputSurfaces)
     plotCurveOnSurface(surfaces[currentSurfaceId], pointOnSurface.y, true, "#f000f0");
   }
 
-  function drawSurfaceControls(surface, lineColor, dotColor)
+  function drawSurfaceControls(surface, lineColor, dotColor, isCurrent)
   {
 
     for (var i = 0; i < surface.points[0].length; i++)
     {
-      drawPolygon(getColumn(surface.points, i), doublePlotWidth, lineColor, dotColor)
+      drawPolygon(getColumn(surface.points, i), doublePlotWidth, lineColor, dotColor, isCurrent, -1)
     }
     for (var i = 0; i < surface.points.length; i++)
     {
-      drawPolygon(surface.points[i], doublePlotWidth, lineColor, dotColor)
+      lineIndex = -1
+      if (!shouldDrawJacobian)
+      {
+        lineIndex = i
+      }
+      drawPolygon(surface.points[i], doublePlotWidth, lineColor, dotColor, isCurrent, lineIndex)
     }
   }
 
@@ -608,15 +622,7 @@ function main(inputSurfaces)
       dotColor = "#0000f0"
     }
 
-    drawSurfaceControls(surface, lineColor, dotColor)
-    for (var i = 0; i < surface.points[0].length; i++)
-    {
-      drawPolygon(getColumn(surface.points, i), doublePlotWidth, lineColor, dotColor)
-    }
-    for (var i = 0; i < surface.points.length; i++)
-    {
-      drawPolygon(surface.points[i], doublePlotWidth, lineColor, dotColor)
-    }
+    drawSurfaceControls(surface, lineColor, dotColor, isCurrent)
     //plot curve
     var curveColor = "#a04040"
     if (isCurrent)
@@ -1026,11 +1032,11 @@ function main(inputSurfaces)
       lineColor = "#00" + toHex(shade, 2) + "00"
       for (var i = 0; i < skeletonPoints[k].length; i++)
       {
-        drawPolygon(skeletonPoints[k][i], plotWidth, lineColor, "#000000")
+        drawPolygon(skeletonPoints[k][i], plotWidth, lineColor, "#000000". false, -1)
       }
       for (var j = 0; j < skeletonPoints[k][0].length; j++)
       {
-        drawPolygon(getColumn(skeletonPoints[k], j), plotWidth, lineColor, "#000000")
+        drawPolygon(getColumn(skeletonPoints[k], j), plotWidth, lineColor, "#000000", false, -1)
       }
     }
   }
@@ -1056,7 +1062,7 @@ function main(inputSurfaces)
       plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnSurface.y, true, "#00f000");
       //Draw dot
       point = tensor(surfaces[currentSurfaceId], mouseOnSurface.y, mouseOnSurface.x).pop()[0]
-      drawPolygon(point, plotWidth, "#000000", "#000000")
+      drawPolygon(point, plotWidth, "#000000", "#000000", false, -1)
     }
 
 
