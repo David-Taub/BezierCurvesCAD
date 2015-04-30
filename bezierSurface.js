@@ -1,6 +1,26 @@
 $( document ).ready(function()
 {
-  var surface = {"name":"1","points":[[{"x":0.038,"y":0.242},{"x":0.34286000000000005,"y":0.348691985168457},{"x":0.49352,"y":0.368131985168457},{"x":0.5684051137924195,"y":0.36466761550903315},{"x":0.844,"y":0.066}],[{"x":0.25200568199157714,"y":0.4499943180084229},{"x":0.41252000000000005,"y":0.5025919975280762},{"x":0.49352460241317747,"y":0.5291553975868225},{"x":0.5939646024131775,"y":0.5097153975868226},{"x":0.67,"y":0.4051999969482422}],[{"x":0.3056046024131775,"y":0.5680353975868225},{"x":0.4254846024131775,"y":0.5971953975868225},{"x":0.48866460241317744,"y":0.5955753975868225},{"x":0.6085446024131775,"y":0.5761353975868225},{"x":0.768,"y":0.5491999969482422}],[{"x":0.28130460241317745,"y":0.6781953975868225},{"x":0.4044246024131775,"y":0.7041153975868225},{"x":0.4928051137924194,"y":0.6544676155090332},{"x":0.6926051137924194,"y":0.7228676155090332},{"x":0.794,"y":0.75}],[{"x":0.08420511379241946,"y":0.9157948862075805},{"x":0.3812051137924194,"y":0.7786676155090333},{"x":0.5216051137924195,"y":0.7948676155090333},{"x":0.7142051137924195,"y":0.8398676155090332},{"x":0.986,"y":0.952}]]}
+  var surface = {"name":"1","points":[
+    [{"x":0.1,"y":0.1},
+    {"x":0.3,"y":0.1},
+    {"x":0.5,"y":0.1},
+    {"x":0.7,"y":0.1}],
+
+    [{"x":0.1,"y":0.3},
+    {"x":0.3,"y":0.3},
+    {"x":0.5,"y":0.3},
+    {"x":0.7,"y":0.3}],
+
+    [{"x":0.1,"y":0.5},
+    {"x":0.3,"y":0.5},
+    {"x":0.5,"y":0.5},
+    {"x":0.7,"y":0.5}],
+
+    [{"x":0.1,"y":0.7},
+    {"x":0.3,"y":0.7},
+    {"x":0.5,"y":0.7},
+    {"x":0.7,"y":0.7}]
+    ]}
   main([surface])
 })
 
@@ -485,7 +505,6 @@ function main(inputSurfaces)
         physicalCtx.fillStyle = "#000000"
         physicalCtx.font="15px Courier New"
         pointString = "P(" + lineIndex.toString() + "," + i.toString() + ")"
-        console.log(pointString)
         physicalCtx.fillText(pointString, width * polygonPoints[i].x + 10, height1 * ( 1- polygonPoints[i].y))
       }
     }
@@ -511,7 +530,8 @@ function main(inputSurfaces)
         }
       }
     }
-    return [min, max]
+    //Adding epsilon to avoid black screen when all values in the surface are the same
+    return [min - Number.EPSILON, max + Number.EPSILON]
   }
 
   function drawJacobianRow(u, pixelsPerSample, step, movementTime, min, max)
@@ -552,7 +572,9 @@ function main(inputSurfaces)
     {
       return
     }
-    if (shouldDrawJacobian)
+    if (shouldDrawJacobian &&
+        surfaces[currentSurfaceId].points.length > 1 &&
+        surfaces[currentSurfaceId].points[0].length)
     {
       minMax = findMinMaxJacobian(LOW_RES_PIX_PER_SAMPLE.toFixed(2) / width)
       min = minMax[0]
@@ -827,7 +849,7 @@ function main(inputSurfaces)
     dxdv = (1 - u) * (p00.x - p01.x) + u * (p10.x - p11.x)
     dydv = (1 - u) * (p00.y - p01.y) + u * (p10.y - p11.y)
     jacobianDeterminant = (dxdu * dydv) - (dydu * dxdv)
-    return jacobianDeterminant
+    return parseFloat(jacobianDeterminant.toFixed(6))
   }
 
   function removeRowAndColumn(surface, rowIndex, columnIndex)
@@ -912,10 +934,6 @@ function main(inputSurfaces)
     parameterCtx.font="15px Courier New"
     parameterCtx.fillText("(" + mouseOnSurface.x.toFixed(2) + ", " + mouseOnSurface.y.toFixed(2) +")", 5, 20)
     jacVal = getJacobian(surfaces[currentSurfaceId], mouseOnSurface.x, mouseOnSurface.y)
-    if (isNaN(jacVal))
-    {
-      return
-    }
     parameterCtx.fillText("Jacobian: " + jacVal.toFixed(3), 5, 35)
   }
 
@@ -1032,7 +1050,7 @@ function main(inputSurfaces)
       lineColor = "#00" + toHex(shade, 2) + "00"
       for (var i = 0; i < skeletonPoints[k].length; i++)
       {
-        drawPolygon(skeletonPoints[k][i], plotWidth, lineColor, "#000000". false, -1)
+        drawPolygon(skeletonPoints[k][i], plotWidth, lineColor, "#000000", false, -1)
       }
       for (var j = 0; j < skeletonPoints[k][0].length; j++)
       {
