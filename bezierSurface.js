@@ -10,6 +10,7 @@ function main(inputSurfaces)
   var HISTORY_MAX_SIZE = 50
   var HIGH_RES_PIX_PER_SAMPLE  = 5
   var LOW_RES_PIX_PER_SAMPLE  = 30
+  var BLACK_JACOBIAN_THRESHOLD = 0.1
 
 
   var shouldDrawJacobian = true
@@ -360,11 +361,11 @@ function main(inputSurfaces)
     //for (var u = 0; u <= 1; u += 1 / (surfaces[currentSurfaceId].points.length - 1))
     for (var u = 0; u <= linesInGrid; u += 1 )
     {
-      drawParameterLine(u / linesInGrid, true, "#f00000");
+      drawParameterLine(u / linesInGrid, true, "rgb(255, 0, 0)");
     }
     for (var v = 0; v <= linesInGrid; v += 1)
     {
-      drawParameterLine(v / linesInGrid, false, "#f00000");
+      drawParameterLine(v / linesInGrid, false, "rgb(255, 0, 0)");
     }
   }
 
@@ -410,7 +411,7 @@ function main(inputSurfaces)
       if (isCurrent && lineIndex != -1)
       {
         //Write Point id
-        physicalCtx.fillStyle = "#000000"
+        physicalCtx.fillStyle = "rgb(0, 0, 0)"
         physicalCtx.font="15px Courier New"
         pointString = "P(" + lineIndex.toString() + "," + i.toString() + ")"
         physicalCtx.fillText(pointString, width * polygonPoints[i].x + 10, height1 * ( 1- polygonPoints[i].y))
@@ -438,10 +439,20 @@ function main(inputSurfaces)
         }
       }
     }
-    //Adding epsilon to avoid black screen when all values in the surface are the same
+    /*
+    Note (see note at getJacobian):
+    We add epsilons here to avoid the black screen which is caused by a too narrow
+    values range that occurs when all Jacobian values in the surface are the same.
+    */
     return [min - Number.EPSILON, max + Number.EPSILON]
   }
 
+  /*
+  Performance Note:
+  We did this weird row-by-row drawing, where every row drawing is an event handler
+  to avoid freezing the canvas with a single and heavy event handler that calculates
+  the Jacobian value of all pixel. JS multi-threading might make this even faster.
+  */
   function drawJacobianRow(v, pixelsPerSample, step, movementTime, min, max)
   {
     if(surfaces.length == 0)
@@ -456,13 +467,27 @@ function main(inputSurfaces)
     {
       point = tensor(surfaces[currentSurfaceId], u, v).pop()[0][0]
       jacVal = getJacobian(surfaces[currentSurfaceId], u, v)
-      if (Math.abs(jacVal) < 0.01)
+
+      /*
+      Note:
+      Here we set a range that will be colored black.
+      This will give visual indication of the area where the Jacobian is "zero"
+      */
+      if (Math.abs(jacVal) < BLACK_JACOBIAN_THRESHOLD)
       {
-        color = "#000000"
+        color = "rgb(0, 0, 0)"
       }
       else
       {
         shade = (jacVal - min) / (max - min)
+        /*
+        Note:
+        To determine an approximation of the Jacobian values range, we sampled the surface
+        before drawing the values in higher resolution. Values that are drawn in between the
+        samples might exceed the max\min that was sampled, so we round these exceeding values
+        to fit in the approximated range. If the sampling resolution constant is high enough
+        and the surface is not to extreme in its values, it shouldn't be visible.
+        */
         if (shade > 1)
         {
           shade = 1
@@ -518,10 +543,10 @@ function main(inputSurfaces)
       return
     }
     //Draw point on surface
-    drawParameterLine(pointOnSurface.x, false, "#f000f0")
-    drawParameterLine(pointOnSurface.y, true, "#f000f0")
-    plotCurveOnSurface(surfaces[currentSurfaceId], pointOnSurface.x, false, "#f000f0");
-    plotCurveOnSurface(surfaces[currentSurfaceId], pointOnSurface.y, true, "#f000f0");
+    drawParameterLine(pointOnSurface.x, false, "rgb(255, 0, 255)")
+    drawParameterLine(pointOnSurface.y, true, "rgb(255, 0, 255)")
+    plotCurveOnSurface(surfaces[currentSurfaceId], pointOnSurface.x, false, "rgb(255, 0, 255)");
+    plotCurveOnSurface(surfaces[currentSurfaceId], pointOnSurface.y, true, "rgb(255, 0, 255)");
   }
 
   function drawSurfaceControls(surface, lineColor, dotColor, isCurrent)
@@ -550,21 +575,21 @@ function main(inputSurfaces)
       return
     }
     //disabled colors
-    var lineColor = "#e0e0e0"
-    var dotColor = "#a0a0a0"
+    var lineColor = "rgb(200, 200, 200)"
+    var dotColor = "rgb(100, 100, 100)"
     if (isCurrent)
     {
       //enabled colors
-      lineColor = "#0000f5"
-      dotColor = "#0000f0"
+      lineColor = "rgb(0, 0, 230)"
+      dotColor = "rgb(0, 0, 200)"
     }
 
     drawSurfaceControls(surface, lineColor, dotColor, isCurrent)
     //plot curve
-    var curveColor = "#a04040"
+    var curveColor = "rgb(255, 20, 20)"
     if (isCurrent)
     {
-      curveColor = "#f00000"
+      curveColor = "rgb(255, 0, 0)"
     }
     linesInGrid = getLinesAmountInGrid() + 1
     //for (var u = 0; u <= 1; u += 1 / (surface.points.length - 1))
@@ -674,7 +699,7 @@ function main(inputSurfaces)
     {
       deCasteljauCurveStatus = "On"
     }
-    physicalCtx.fillStyle="#000000"
+    physicalCtx.fillStyle="rgb(0, 0, 0)"
     physicalCtx.font="15px Courier New"
     physicalCtx.fillText("[j] Jacobian: " + jacobianStatus, 5, 20)
     physicalCtx.fillText("[c] De-Casteljau: " + deCasteljauCurveStatus, 5, 35)
@@ -683,7 +708,7 @@ function main(inputSurfaces)
     {
       return
     }
-    parameterCtx.fillStyle="#000000"
+    parameterCtx.fillStyle="rgb(0, 0, 0)"
     parameterCtx.font="bold 15px Courier New"
     parameterCtx.fillText("Param: (" + mouseOnParameterSpace.x.toFixed(2) + ", " + mouseOnParameterSpace.y.toFixed(2) +")", 5, 20)
     parameterCtx.fillText("Physi: (" + physicalMouseCoordinates.x.toFixed(2) + ", " + physicalMouseCoordinates.y.toFixed(2) +")", 5, 35)
@@ -805,12 +830,12 @@ function main(inputSurfaces)
       //Draw rows on mesh
       for (var i = 0; i < skeletonPoints[k].length; i++)
       {
-        drawPolygon(skeletonPoints[k][i], plotWidth, lineColor, "#000000", false, -1)
+        drawPolygon(skeletonPoints[k][i], plotWidth, lineColor, "rgb(0, 0, 0)", false, -1)
       }
       //Draw columns on mesh
       for (var j = 0; j < skeletonPoints[k][0].length; j++)
       {
-        drawPolygon(getColumn(skeletonPoints[k], j), plotWidth, lineColor, "#000000", false, -1)
+        drawPolygon(getColumn(skeletonPoints[k], j), plotWidth, lineColor, "rgb(0, 0, 0)", false, -1)
       }
     }
     return skeletonPoints.pop()[0][0]
@@ -826,8 +851,8 @@ function main(inputSurfaces)
       return
     }
 
-    drawParameterLine(mouseOnParameterSpace.x, false, "#00f000")
-    drawParameterLine(mouseOnParameterSpace.y, true, "#00f000")
+    drawParameterLine(mouseOnParameterSpace.x, false, "rgb(0, 255, 0)")
+    drawParameterLine(mouseOnParameterSpace.y, true, "rgb(0, 255, 0)")
 
     if (shouldDrawSkeleton)
     {
@@ -838,11 +863,11 @@ function main(inputSurfaces)
     else
     {
       //Draw curves
-      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnParameterSpace.x, false, "#00f000");
-      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnParameterSpace.y, true, "#00f000");
+      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnParameterSpace.x, true, "rgb(0, 255, 0)");
+      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnParameterSpace.y, false, "rgb(0, 255, 0)");
       //Draw dot
       physicalMouseCoordinates = tensor(surfaces[currentSurfaceId], mouseOnParameterSpace.x, mouseOnParameterSpace.y).pop()[0]
-      drawPolygon(physicalMouseCoordinates, plotWidth, "#000000", "#000000", false, -1)
+      drawPolygon(physicalMouseCoordinates, plotWidth, "rgb(0, 0, 0)", "rgb(0, 0, 0)", false, -1)
     }
     return physicalMouseCoordinates
   }
@@ -1088,9 +1113,9 @@ function main(inputSurfaces)
     jacobianDeterminant = (dxdu * dydv) - (dydu * dxdv)
     /*
     Note:
-    We trim the float result after the 6th digit to avoid noise caused
-    by the imprecise nature of float arithmetic. It is very visible when presenting
-    an square grid mesh that should have a constant Jacobian in every point on it.
+    We trim the float precision to avoid noise caused by the imprecise nature of
+    float arithmetic. It is very visible when presenting an square grid mesh that
+    should have a constant Jacobian in every point on it.
     */
     return parseFloat(jacobianDeterminant.toFixed(8))
   }
