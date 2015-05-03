@@ -456,7 +456,7 @@ function main(inputSurfaces)
     {
       point = tensor(surfaces[currentSurfaceId], u, v).pop()[0][0]
       jacVal = getJacobian(surfaces[currentSurfaceId], u, v)
-      if (Math.abs(jacVal) < 0.001)
+      if (Math.abs(jacVal) < 0.01)
       {
         color = "#000000"
       }
@@ -1081,10 +1081,10 @@ function main(inputSurfaces)
     p10 = bilinearPatch[2]
     p11 = bilinearPatch[3]
 
-    dxdu = (1 - v) * (p00.x - p10.x) + v * (p01.x - p11.x)
-    dydu = (1 - v) * (p00.y - p10.y) + v * (p01.y - p11.y)
-    dxdv = (1 - u) * (p00.x - p01.x) + u * (p10.x - p11.x)
-    dydv = (1 - u) * (p00.y - p01.y) + u * (p10.y - p11.y)
+    dxdu = ((1 - v) * (p00.x - p10.x) + v * (p01.x - p11.x)) * surface.points.length
+    dydu = ((1 - v) * (p00.y - p10.y) + v * (p01.y - p11.y)) * surface.points.length
+    dxdv = ((1 - u) * (p00.x - p01.x) + u * (p10.x - p11.x)) * surface.points[0].length
+    dydv = ((1 - u) * (p00.y - p01.y) + u * (p10.y - p11.y)) * surface.points[0].length
     jacobianDeterminant = (dxdu * dydv) - (dydu * dxdv)
     /*
     Note:
@@ -1092,7 +1092,7 @@ function main(inputSurfaces)
     by the imprecise nature of float arithmetic. It is very visible when presenting
     an square grid mesh that should have a constant Jacobian in every point on it.
     */
-    return parseFloat(jacobianDeterminant.toFixed(6))
+    return parseFloat(jacobianDeterminant.toFixed(8))
   }
 
   //Divides given surface into 4 different surfaces that together have the same shape
