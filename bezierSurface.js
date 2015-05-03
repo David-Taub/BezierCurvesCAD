@@ -2,8 +2,8 @@ $( document ).ready(function()
 {
   var surface = {"name":"1","points":[[{"x":0.038,"y":0.242},{"x":0.34286000000000005,"y":0.348691985168457},{"x":0.49352,"y":0.368131985168457},{"x":0.5684051137924195,"y":0.36466761550903315},{"x":0.844,"y":0.066}],[{"x":0.25200568199157714,"y":0.4499943180084229},{"x":0.41252000000000005,"y":0.5025919975280762},{"x":0.49352460241317747,"y":0.5291553975868225},{"x":0.5939646024131775,"y":0.5097153975868226},{"x":0.67,"y":0.4051999969482422}],[{"x":0.3056046024131775,"y":0.5680353975868225},{"x":0.4254846024131775,"y":0.5971953975868225},{"x":0.48866460241317744,"y":0.5955753975868225},{"x":0.6085446024131775,"y":0.5761353975868225},{"x":0.768,"y":0.5491999969482422}],[{"x":0.28130460241317745,"y":0.6781953975868225},{"x":0.4044246024131775,"y":0.7041153975868225},{"x":0.4928051137924194,"y":0.6544676155090332},{"x":0.6926051137924194,"y":0.7228676155090332},{"x":0.794,"y":0.75}],[{"x":0.08420511379241946,"y":0.9157948862075805},{"x":0.3812051137924194,"y":0.7786676155090333},{"x":0.5216051137924195,"y":0.7948676155090333},{"x":0.7142051137924195,"y":0.8398676155090332},{"x":0.986,"y":0.952}]]}
   main([surface])
-})
 
+})
 
 function main(inputSurfaces)
 {
@@ -16,7 +16,7 @@ function main(inputSurfaces)
   var lastDrawTimestamp = (new Date).getTime()
   var lastLowResDrawn = 0
   var history = [], forwardHistory = []
-  var timer, deCasteljauRatio = 1
+  var timer, deCasteljauCurveRatio = 1
   var surfaces
   var pointOnSurface = -1
   var mouseOnParameterSpace = -1
@@ -101,22 +101,6 @@ function main(inputSurfaces)
     forwardHistory = []
   }
 
-  // meeting point is on the original curve at the deCasteljau as t parameter.
-  function splitCurve(curve, t)
-  {
-    var skeletonPoints = deCasteljau(curve, t)
-    //build two curves
-    var postfixCurve = []
-    var prefixCurve = []
-    //add points to new curves
-    for (var i = 0; i < curve.length; i++)
-    {
-      prefixCurve.push(skeletonPoints[i][0])
-      postfixCurve.push(skeletonPoints[curve.length - i - 1][i])
-    }
-    //add new curves to the curves list
-    return [prefixCurve, postfixCurve]
-  }
 
   function updateSurfacesList()
   {
@@ -204,7 +188,7 @@ function main(inputSurfaces)
         break
       //S
       case 83:
-        splitSurfaceByPoint()
+        subDivideSurfaceByPoint()
         break
       //Z
       case 90:
@@ -243,7 +227,7 @@ function main(inputSurfaces)
     }
   }
 
-  function splitSurfaceByPoint()
+  function subDivideSurfaceByPoint()
   {
     if (pointOnSurface == -1)
     {
@@ -251,69 +235,13 @@ function main(inputSurfaces)
     }
     pushToHistory()
     surface = surfaces[currentSurfaceId]
-    var newSurfaces = splitSurface(surface, pointOnSurface.x, pointOnSurface.y)
+    var newSurfaces = subDivideSurface(surface, pointOnSurface.x, pointOnSurface.y)
     surfaces.splice(currentSurfaceId, 1, newSurfaces[0], newSurfaces[1], newSurfaces[2], newSurfaces[3])
 
     updateSurfacesList()
     redraw()
   }
-  //If deCasteljauRatio is in the current curve range, make the current curve
-  // into two surfaces with the exact same shape as the current curve, where their
-  // meeting point is on the original curve at the deCasteljau as t parameter.
-  function splitSurface(surface, u, v)
-  {
-    var semiSurfaces = [[], []]
-    for (var i = 0; i < surface.points.length; i++)
-    {
-      var subCurves = splitCurve(surface.points[i], u)
-      semiSurfaces[0].push(subCurves[0])
-      semiSurfaces[1].push(subCurves[1])
-    }
-    var quadSurfaces = [{
-                        name : surface.name + ".1",
-                        points : []
-                      },
-                      {
-                        name : surface.name + ".2",
-                        points : []
-                      },
-                      {
-                        name : surface.name + ".3",
-                        points : []
-                      },
-                      {
-                        name : surface.name + ".4",
-                        points : []
-                      }]
 
-    for (var i = 0; i < semiSurfaces[0][0].length; i++)
-    {
-      var subCurves = splitCurve(getColumn(semiSurfaces[0], i), v)
-      quadSurfaces[0].points.push(subCurves[0])
-      quadSurfaces[1].points.push(subCurves[1])
-    }
-
-    for (var i = 0; i < semiSurfaces[1][0].length; i++)
-    {
-      var subCurves = splitCurve(getColumn(semiSurfaces[1], i), v)
-      quadSurfaces[2].points.push(subCurves[0])
-      quadSurfaces[3].points.push(subCurves[1])
-    }
-    return quadSurfaces
-  }
-
-  function transposeSurface(surface)
-  {
-    var transposedSurface = {
-      name : surface.name,
-      points : []
-    }
-    for (var i = 0; i < surface.points[0].length; i++)
-    {
-      transposedSurface.points.push(getColumn(surface.points, i))
-    }
-    return transposedSurface
-  }
 
   //Add point as last in polygon, coordinates are between 0 to 1
   //If isNewCurve is true create a new curve and add the point to it.
@@ -686,158 +614,6 @@ function main(inputSurfaces)
       lastStep = curveStep
     }
   }
-  //Receive points of control polygon and the t parameter of the Bezier function
-  //Return array of arrays of the DeCasteljau points by order:
-  //0 - the control points (n points)
-  //1 - first level of the skeleton points (n-1 points)
-  //...
-  //n-1 - the curve point (1 point)
-  function deCasteljau(points, t)
-  {
-    var skeletonPoints = []
-    //first run - the control points
-    skeletonPoints[0] = points
-
-    //"recursive" runs of the algorithm (implemented not recursively)
-    for (var j = 1; j < points.length; j++)
-    {
-      skeletonPoints[j] = []
-      //Skeleton points in current iteration
-      for (var i = 0; i < points.length - j; i++)
-      {
-        skeletonPoints[j][i] = {
-          x : (1 - t) * skeletonPoints[j-1][i].x + t * skeletonPoints[j-1][i + 1].x,
-          y : (1 - t) * skeletonPoints[j-1][i].y + t * skeletonPoints[j-1][i + 1].y
-        }
-      }
-    }
-    return skeletonPoints
-  }
-
-
-  function tensor(surface, u, v)
-  {
-    //De Casteljau with 2 parameters
-    var skeletonPoints = [surface.points]
-    for (var k = 0; k < Math.min(surface.points.length, surface.points[0].length) - 1; k++)
-    {
-      //De Casteljau iteration
-      nextStepSkeleton = []
-      for (var i = 0; i < skeletonPoints[k].length - 1; i++)
-      {
-        nextStepSkeletonRow = []
-        for (var j = 0; j < skeletonPoints[k][0].length - 1; j++)
-        {
-          nextStepSkeletonRow.push({
-            x : skeletonPoints[k][i][j].x * (1 - u) * (1 - v)+
-                skeletonPoints[k][i + 1][j].x * u * (1 - v) +
-                skeletonPoints[k][i][j + 1].x * (1 - u) * v +
-                skeletonPoints[k][i + 1][j + 1].x * u * v,
-            y : skeletonPoints[k][i][j].y * (1 - u) * (1 - v)+
-                skeletonPoints[k][i + 1][j].y * u * (1 - v) +
-                skeletonPoints[k][i][j + 1].y * (1 - u) * v +
-                skeletonPoints[k][i + 1][j + 1].y * u * v
-          })
-        }
-        nextStepSkeleton.push(nextStepSkeletonRow)
-      }
-      skeletonPoints.push(nextStepSkeleton)
-    }
-    //Last decasteljau steps, now it's a curve - not a surface
-    //If more rows than columns in given points matrix
-    if (skeletonPoints[skeletonPoints.length - 1].length > 1)
-    {
-      var skeletonCurve = deCasteljau(getColumn(skeletonPoints.pop(), 0), u)
-      for (var i = 0; i < skeletonCurve.length; i++)
-      {
-        skeletonPoints.push([skeletonCurve[i]])
-      }
-      return skeletonPoints
-    }
-    //If more columns than rows in given points matrix
-    if (skeletonPoints[skeletonPoints.length - 1][0].length > 1)
-    {
-      var skeletonCurve = deCasteljau(skeletonPoints.pop()[0], v)
-      for (var i = 0; i < skeletonCurve.length; i++)
-      {
-        skeletonPoints.push([skeletonCurve[i]])
-      }
-      return skeletonPoints
-    }
-    //If given matrix was square
-    return skeletonPoints
-  }
-
-  function getBilinearPatch(surface, u, v)
-  {
-    var p00, p01, p10, p11
-    rows = surface.points.length
-    columns = surface.points[0].length
-    if (rows == columns)
-    {
-      skeleton = tensor(surface, u, v)
-      bilinearPatch = skeleton[skeleton.length - 2]
-      p00 = bilinearPatch[0][0]
-      p10 = bilinearPatch[1][0]
-      p01 = bilinearPatch[0][1]
-      p11 = bilinearPatch[1][1]
-    }
-    else if (rows > columns)
-    {
-      skeleton = tensor(surface, u, v)
-      strip = skeleton[columns - 2]
-      points00 = getColumn(strip, 0)
-      points01 = getColumn(strip, 0)
-      points10 = getColumn(strip, 1)
-      points11 = getColumn(strip, 1)
-      points00.splice(0, 1)
-      points01.splice(points01.length - 1, 1)
-      points10.splice(0, 1)
-      points11.splice(points11.length - 1, 1)
-      p00 = deCasteljau(points00, u).pop()[0]
-      p01 = deCasteljau(points01, u).pop()[0]
-      p10 = deCasteljau(points10, u).pop()[0]
-      p11 = deCasteljau(points11, u).pop()[0]
-    }
-    else
-    {
-      skeleton = tensor(surface, u, v)
-      strip = skeleton[rows - 2]
-      points00 = $.extend(true, [], strip[0])
-      points01 = $.extend(true, [], strip[0])
-      points10 = $.extend(true, [], strip[1])
-      points11 = $.extend(true, [], strip[1])
-      points00.splice(points01.length - 1, 1)
-      points01.splice(0, 1)
-      points10.splice(points11.length - 1, 1)
-      points11.splice(0, 1)
-      p00 = deCasteljau(points00, v).pop()[0]
-      p01 = deCasteljau(points01, v).pop()[0]
-      p10 = deCasteljau(points10, v).pop()[0]
-      p11 = deCasteljau(points11, v).pop()[0]
-    }
-    return [p00, p01, p10, p11]
-  }
-
-  function getJacobian(surface, u, v)
-  {
-    if (surface.points.length < 2 || surface.points[0].length < 2)
-    {
-        return
-    }
-    bilinearPatch = getBilinearPatch(surface, u, v)
-    p00 = bilinearPatch[0]
-    p01 = bilinearPatch[1]
-    p10 = bilinearPatch[2]
-    p11 = bilinearPatch[3]
-
-    dxdu = (1 - v) * (p00.x - p10.x) + v * (p01.x - p11.x)
-    dydu = (1 - v) * (p00.y - p10.y) + v * (p01.y - p11.y)
-    dxdv = (1 - u) * (p00.x - p01.x) + u * (p10.x - p11.x)
-    dydv = (1 - u) * (p00.y - p01.y) + u * (p10.y - p11.y)
-    jacobianDeterminant = (dxdu * dydv) - (dydu * dxdv)
-    return parseFloat(jacobianDeterminant.toFixed(6))
-  }
 
   function removeRowAndColumn(surface, rowIndex, columnIndex)
   {
@@ -848,16 +624,6 @@ function main(inputSurfaces)
       newSurface.points[i].splice(columnIndex , 1)
     }
     return newSurface
-  }
-
-  function getColumn(matrix, index)
-  {
-    column = []
-    for (var i = 0; i < matrix.length; i++)
-    {
-      column.push(matrix[i][index])
-    }
-    return column
   }
 
   function isExceedingCanvas()
@@ -898,7 +664,7 @@ function main(inputSurfaces)
 
   function writeStatus(physicalMouseCoordinates)
   {
-    var deCasteljauStatus = "Off"
+    var deCasteljauCurveStatus = "Off"
     var jacobianStatus = "Off"
     if (shouldDrawJacobian)
     {
@@ -906,12 +672,12 @@ function main(inputSurfaces)
     }
     if (shouldDrawSkeleton)
     {
-      deCasteljauStatus = "On"
+      deCasteljauCurveStatus = "On"
     }
     physicalCtx.fillStyle="#000000"
     physicalCtx.font="15px Courier New"
     physicalCtx.fillText("[j] Jacobian: " + jacobianStatus, 5, 20)
-    physicalCtx.fillText("[c] De-Casteljau: " + deCasteljauStatus, 5, 35)
+    physicalCtx.fillText("[c] De-Casteljau: " + deCasteljauCurveStatus, 5, 35)
 
     if (mouseOnParameterSpace == -1)
     {
@@ -942,7 +708,7 @@ function main(inputSurfaces)
     parameterCanvas.height = height
     drawJacobian()
     drawSurfaces()
-    physicalMouseCoordinates = drawmouseOnParameterSpace()
+    physicalMouseCoordinates = drawMouseOnParameterSpace()
     drawParameterGrid()
     writeStatus(physicalMouseCoordinates)
   }
@@ -1023,24 +789,25 @@ function main(inputSurfaces)
       redraw()
     }
   }
-  function toHex(number, size)
-  {
-      var s = number.toString(16);
-      while (s.length < size) {s = "0" + s;}
-      return s;
-  }
 
-  function drawSkeleton()
+  /*
+  Calculates and draw the DeCasteljau skeleton of given surface at given u,v coordinates
+  For nicer visualization, color the steps in the skeleton with different shades of green.
+  */
+  function drawSkeleton(surface, u, v)
   {
-    skeletonPoints = tensor(surfaces[currentSurfaceId], mouseOnParameterSpace.x, mouseOnParameterSpace.y)
+    skeletonPoints = tensor(surface, u, v)
     for (var k = 1; k < skeletonPoints.length; k++)
     {
+      //Different shades of green
       shade = Math.round((240) * k / (skeletonPoints.length - 2) + 10)
-      lineColor = "#00" + toHex(shade, 2) + "00"
+      lineColor = "rgb(0, " + shade.toString() + ", 0)"
+      //Draw rows on mesh
       for (var i = 0; i < skeletonPoints[k].length; i++)
       {
         drawPolygon(skeletonPoints[k][i], plotWidth, lineColor, "#000000", false, -1)
       }
+      //Draw columns on mesh
       for (var j = 0; j < skeletonPoints[k][0].length; j++)
       {
         drawPolygon(getColumn(skeletonPoints[k], j), plotWidth, lineColor, "#000000", false, -1)
@@ -1049,7 +816,10 @@ function main(inputSurfaces)
     return skeletonPoints.pop()[0][0]
   }
 
-  function drawmouseOnParameterSpace()
+  /*
+  Draw the physical DeCasteljau skeleton of green cross when mouse is over the parameter canvas
+  */
+  function drawMouseOnParameterSpace()
   {
     if (surfaces.length == 0 || surfaces[currentSurfaceId].points.length == 0 || mouseOnParameterSpace == -1)
     {
@@ -1061,7 +831,9 @@ function main(inputSurfaces)
 
     if (shouldDrawSkeleton)
     {
-      physicalMouseCoordinates = drawSkeleton()
+      physicalMouseCoordinates = drawSkeleton(surfaces[currentSurfaceId],
+                                              mouseOnParameterSpace.x,
+                                              mouseOnParameterSpace.y)
     }
     else
     {
@@ -1088,7 +860,9 @@ function main(inputSurfaces)
       y : (height1 - (ev.clientY - rect.top)) / height
     }
   }
-   // takes value between 0 to 1 and returns an rgba value
+
+  // takes value between 0 to 1 and returns an rgb which
+  // represent the color on the visible spectrum at value
   function shadeToColor(value)
   {
 
@@ -1125,5 +899,289 @@ function main(inputSurfaces)
         B = 0;
     }
     return "rgb(" + (R * 100) + "%," + (G * 100) + "%," + (B * 100) + "%)";
+  }
+
+
+
+
+
+
+//MATHEMATICAL FUNCTIONS
+
+
+  //Receive points of control polygon and the t parameter of the Bezier curve function
+  //Return array of arrays of the DeCasteljau points by order:
+  //0 - the control points (n points)
+  //1 - first level of the skeleton points (n-1 points)
+  //...
+  //n-1 - the curve point (1 point)
+  function deCasteljauCurve(points, t)
+  {
+    var skeletonPoints = []
+    //first run - the control points
+    skeletonPoints[0] = points
+
+    //"recursive" runs of the algorithm (implemented not recursively)
+    for (var j = 1; j < points.length; j++)
+    {
+      skeletonPoints[j] = []
+      //Skeleton points in current iteration
+      for (var i = 0; i < points.length - j; i++)
+      {
+        skeletonPoints[j][i] = {
+          x : (1 - t) * skeletonPoints[j-1][i].x + t * skeletonPoints[j-1][i + 1].x,
+          y : (1 - t) * skeletonPoints[j-1][i].y + t * skeletonPoints[j-1][i + 1].y
+        }
+      }
+    }
+    return skeletonPoints
+  }
+
+
+  /*
+  Using the DeCasteljau algorithm to build the skeleton of given surface
+  at given (u,v) point.
+  The skeleton returned is an array of matrices, where each matrix represents
+  a step of DeCastlejau algorithm. The last matrix in the array will contain a
+  single point which is the physical value of the surface at the u,v coordinates.
+  When the surface is not NxN, we will end up with a curve and not a single point,
+  then we will use the DeCasteljau curve algorithm, and concatenate its skeleton to the tensor one.
+  */
+  function tensor(surface, u, v)
+  {
+    //De Casteljau with 2 parameters
+    var skeletonPoints = [surface.points]
+    for (var k = 0; k < Math.min(surface.points.length, surface.points[0].length) - 1; k++)
+    {
+      //De Casteljau iteration
+      nextStepSkeleton = []
+      for (var i = 0; i < skeletonPoints[k].length - 1; i++)
+      {
+        nextStepSkeletonRow = []
+        for (var j = 0; j < skeletonPoints[k][0].length - 1; j++)
+        {
+          nextStepSkeletonRow.push({
+            x : skeletonPoints[k][i][j].x * (1 - u) * (1 - v)+
+                skeletonPoints[k][i + 1][j].x * u * (1 - v) +
+                skeletonPoints[k][i][j + 1].x * (1 - u) * v +
+                skeletonPoints[k][i + 1][j + 1].x * u * v,
+            y : skeletonPoints[k][i][j].y * (1 - u) * (1 - v)+
+                skeletonPoints[k][i + 1][j].y * u * (1 - v) +
+                skeletonPoints[k][i][j + 1].y * (1 - u) * v +
+                skeletonPoints[k][i + 1][j + 1].y * u * v
+          })
+        }
+        nextStepSkeleton.push(nextStepSkeletonRow)
+      }
+      skeletonPoints.push(nextStepSkeleton)
+    }
+    //When the surface is not NxN:
+    //Last decasteljau steps, now it's a curve - not a surface
+    //If more rows than columns in given points matrix
+    if (skeletonPoints[skeletonPoints.length - 1].length > 1)
+    {
+      var skeletonCurve = deCasteljauCurve(getColumn(skeletonPoints.pop(), 0), u)
+      for (var i = 0; i < skeletonCurve.length; i++)
+      {
+        skeletonPoints.push([skeletonCurve[i]])
+      }
+      return skeletonPoints
+    }
+    //If more columns than rows in given points matrix
+    if (skeletonPoints[skeletonPoints.length - 1][0].length > 1)
+    {
+      var skeletonCurve = deCasteljauCurve(skeletonPoints.pop()[0], v)
+      for (var i = 0; i < skeletonCurve.length; i++)
+      {
+        skeletonPoints.push([skeletonCurve[i]])
+      }
+      return skeletonPoints
+    }
+    //If given matrix was square
+    return skeletonPoints
+  }
+
+  /*
+  Returns array of 4 points which between them creates a
+  plane (patch) which is tangent to the surface on given u,v coordinates.
+  Uses method described in "Point and tangent computation" (Thomas W. Sederberg, 1995)
+  When the surface is NxN, will return the one-before-last step of the DeCasteljau tensor
+  algorithm which contains 2X2 points.
+  When the surface is not NxN, we use the points from tensor skeleton before they become a curve.
+  This will be an 2xM strip, from which we calculate 4 curves of points received when
+  deleting the last / first column and row of the 2xM strip (first-first, first-last, etc).
+  The points of the curves at the u / v (depending if its 2xM or Mx2) will be the tangent patch.
+  */
+  function getTangentPatch(surface, u, v)
+  {
+    var p00, p01, p10, p11
+    rows = surface.points.length
+    columns = surface.points[0].length
+    if (rows == columns)
+    {
+      skeleton = tensor(surface, u, v)
+      bilinearPatch = skeleton[skeleton.length - 2]
+      p00 = bilinearPatch[0][0]
+      p10 = bilinearPatch[1][0]
+      p01 = bilinearPatch[0][1]
+      p11 = bilinearPatch[1][1]
+    }
+    else if (rows > columns)
+    {
+      skeleton = tensor(surface, u, v)
+      strip = skeleton[columns - 2]
+      points00 = getColumn(strip, 0)
+      points01 = getColumn(strip, 0)
+      points10 = getColumn(strip, 1)
+      points11 = getColumn(strip, 1)
+      points00.splice(0, 1)
+      points01.splice(points01.length - 1, 1)
+      points10.splice(0, 1)
+      points11.splice(points11.length - 1, 1)
+      p00 = deCasteljauCurve(points00, u).pop()[0]
+      p01 = deCasteljauCurve(points01, u).pop()[0]
+      p10 = deCasteljauCurve(points10, u).pop()[0]
+      p11 = deCasteljauCurve(points11, u).pop()[0]
+    }
+    else
+    {
+      skeleton = tensor(surface, u, v)
+      strip = skeleton[rows - 2]
+      points00 = $.extend(true, [], strip[0])
+      points01 = $.extend(true, [], strip[0])
+      points10 = $.extend(true, [], strip[1])
+      points11 = $.extend(true, [], strip[1])
+      points00.splice(points01.length - 1, 1)
+      points01.splice(0, 1)
+      points10.splice(points11.length - 1, 1)
+      points11.splice(0, 1)
+      p00 = deCasteljauCurve(points00, v).pop()[0]
+      p01 = deCasteljauCurve(points01, v).pop()[0]
+      p10 = deCasteljauCurve(points10, v).pop()[0]
+      p11 = deCasteljauCurve(points11, v).pop()[0]
+    }
+    return [p00, p01, p10, p11]
+  }
+
+
+  //Calculates the determinant of the Jacobian matrix of given
+  //surface at given coordinates
+  //To calculate the derivative we first get the 2X2 patch that is tangent to
+  //the surface, using getTangentPatch function.
+  function getJacobian(surface, u, v)
+  {
+    if (surface.points.length < 2 || surface.points[0].length < 2)
+    {
+        //This is a curve, not a surface
+        return
+    }
+    bilinearPatch = getTangentPatch(surface, u, v)
+    p00 = bilinearPatch[0]
+    p01 = bilinearPatch[1]
+    p10 = bilinearPatch[2]
+    p11 = bilinearPatch[3]
+
+    dxdu = (1 - v) * (p00.x - p10.x) + v * (p01.x - p11.x)
+    dydu = (1 - v) * (p00.y - p10.y) + v * (p01.y - p11.y)
+    dxdv = (1 - u) * (p00.x - p01.x) + u * (p10.x - p11.x)
+    dydv = (1 - u) * (p00.y - p01.y) + u * (p10.y - p11.y)
+    jacobianDeterminant = (dxdu * dydv) - (dydu * dxdv)
+    /*
+    Note:
+    We trim the float result after the 6th digit to avoid noise caused
+    by the imprecise nature of float arithmetic. It is very visible when presenting
+    an square grid mesh that should have a constant Jacobian in every point on it.
+    */
+    return parseFloat(jacobianDeterminant.toFixed(6))
+  }
+
+  //Divides given surface into 4 different surfaces that together have the same shape
+  //Adds their index from 1 to 4 to the new sub-surfaces name
+  //Uses the splitCurve function.
+  function subDivideSurface(surface, u, v)
+  {
+    //Divide on u axis
+    var semiSurfaces = [[], []]
+    for (var i = 0; i < surface.points.length; i++)
+    {
+      var subCurves = splitCurve(surface.points[i], u)
+      semiSurfaces[0].push(subCurves[0])
+      semiSurfaces[1].push(subCurves[1])
+    }
+    var quadSurfaces = [
+      {
+        name : surface.name + ".1",
+        points : []
+      },
+      {
+        name : surface.name + ".2",
+        points : []
+      },
+      {
+        name : surface.name + ".3",
+        points : []
+      },
+      {
+        name : surface.name + ".4",
+        points : []
+      }
+    ]
+
+    //divide on v axis
+    for (var j = 0; j < 2; j++)
+    {
+      for (var i = 0; i < semiSurfaces[0][0].length; i++)
+      {
+        var subCurves = splitCurve(getColumn(semiSurfaces[j], i), v)
+        quadSurfaces[2 * j].points.push(subCurves[0])
+        quadSurfaces[2 * j + 1].points.push(subCurves[1])
+      }
+    }
+    return quadSurfaces
+  }
+
+  // Return two curves that has the same shape of the given curve.
+  // The meeting point of the two new curves is the point t on the original curve.
+  // Uses DeCasteljau algorithm
+  function splitCurve(curve, t)
+  {
+    var skeletonPoints = deCasteljauCurve(curve, t)
+    //build two curves
+    var postfixCurve = []
+    var prefixCurve = []
+    //add points to new curves
+    for (var i = 0; i < curve.length; i++)
+    {
+      prefixCurve.push(skeletonPoints[i][0])
+      postfixCurve.push(skeletonPoints[curve.length - i - 1][i])
+    }
+    //add new curves to the curves list
+    return [prefixCurve, postfixCurve]
+  }
+
+  //Return an array of points at given index from
+  //2d points array of given surface
+  function getColumn(matrix, index)
+  {
+    column = []
+    for (var i = 0; i < matrix.length; i++)
+    {
+      column.push(matrix[i][index])
+    }
+    return column
+  }
+
+  //Transpose the 2d array of points representing the given surface
+  function transposeSurface(surface)
+  {
+    var transposedSurface = {
+      name : surface.name,
+      points : []
+    }
+    for (var i = 0; i < surface.points[0].length; i++)
+    {
+      transposedSurface.points.push(getColumn(surface.points, i))
+    }
+    return transposedSurface
   }
 }
