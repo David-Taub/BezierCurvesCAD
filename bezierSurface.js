@@ -427,7 +427,7 @@ function main(inputSurfaces)
         //Write Point id
         physicalCtx.fillStyle = "rgb(0, 0, 0)"
         physicalCtx.font="15px Courier New"
-        pointString = "P(" + rowIndex.toString() + "," + i.toString() + ")"
+        pointString = "P(" + i.toString() + "," + rowIndex.toString() + ")"
         physicalCtx.fillText(pointString, width * polygonPoints[i].x + 10, height1 * ( 1- polygonPoints[i].y))
       }
     }
