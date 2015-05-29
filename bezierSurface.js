@@ -188,6 +188,22 @@ function main(inputSurfaces)
       case 46:
         deletePoint(ev.ctrlKey)
         break
+      //+
+      case 187:
+      case 107:
+        if (zoom(true))
+        {
+          redraw()
+        }
+        break
+      //-
+      case 189:
+      case 109:
+        if (zoom(false))
+        {
+          redraw()
+        }
+        break
       //S
       case 83:
         subDivideSurfaceByPoint()
@@ -537,9 +553,9 @@ function main(inputSurfaces)
       return
     }
     //zoom out if needed
-    while(isExceedingCanvas())
+    while(isExceedingCanvas(surfaces))
     {
-      correctZoom()
+      zoom(false)
     }
     for (var i = 0; i < surfaces.length; i++)
     {
@@ -658,16 +674,16 @@ function main(inputSurfaces)
     return newSurface
   }
 
-  function isExceedingCanvas()
+  function isExceedingCanvas(surfacesList)
   {
-    for (var k = 0; k < surfaces.length; k++)
+    for (var k = 0; k < surfacesList.length; k++)
     {
-      for (var i = 0; i < surfaces[k].points.length; i++)
+      for (var i = 0; i < surfacesList[k].points.length; i++)
       {
-        for (var j = 0; j < surfaces[k].points[i].length; j++)
+        for (var j = 0; j < surfacesList[k].points[i].length; j++)
         {
-          if (surfaces[k].points[i][j].x < 0 || surfaces[k].points[i][j].x > 1 ||
-              surfaces[k].points[i][j].y < 0 || surfaces[k].points[i][j].y > 1)
+          if (surfacesList[k].points[i][j].x < 0 || surfacesList[k].points[i][j].x > 1 ||
+              surfacesList[k].points[i][j].y < 0 || surfacesList[k].points[i][j].y > 1)
             return true
         }
       }
@@ -675,23 +691,36 @@ function main(inputSurfaces)
     return false
   }
 
-  function correctZoom()
+  function zoom(zoomIn)
   {
-    for (var k = 0; k < surfaces.length; k++)
+    var surfacesCopy = $.extend(true, [], surfaces)
+    factor = 0.9
+    if (zoomIn)
     {
-      for (var i = 0; i < surfaces[k].points.length; i++)
+      factor = 1.1
+    }
+    for (var k = 0; k < surfacesCopy.length; k++)
+    {
+      for (var i = 0; i < surfacesCopy[k].points.length; i++)
       {
-        for (var j = 0; j < surfaces[k].points[i].length; j++)
+        for (var j = 0; j < surfacesCopy[k].points[i].length; j++)
         {
-          surfaces[k].points[i][j].x -= .5
-          surfaces[k].points[i][j].x *= .9
-          surfaces[k].points[i][j].x += .5
-          surfaces[k].points[i][j].y -= .5
-          surfaces[k].points[i][j].y *= .9
-          surfaces[k].points[i][j].y += .5
+
+          surfacesCopy[k].points[i][j].x -= .5
+          surfacesCopy[k].points[i][j].x *= factor
+          surfacesCopy[k].points[i][j].x += .5
+          surfacesCopy[k].points[i][j].y -= .5
+          surfacesCopy[k].points[i][j].y *= factor
+          surfacesCopy[k].points[i][j].y += .5
         }
       }
     }
+    if (!isExceedingCanvas(surfacesCopy))
+    {
+      surfaces = surfacesCopy
+      return true
+    }
+    return false
   }
 
   function writeStatus(physicalMouseCoordinates)
@@ -713,8 +742,9 @@ function main(inputSurfaces)
     }
     physicalCtx.fillStyle="rgb(0, 0, 0)"
     physicalCtx.font="15px Courier New"
-    physicalCtx.fillText("[j] Jacobian: " + jacobianStatus, 5, 20)
-    physicalCtx.fillText("[c] De-Casteljau: " + deCasteljauCurveStatus, 5, 35)
+    physicalCtx.fillText("[+/-] Zoom", 5, 20)
+    physicalCtx.fillText("[j] Jacobian: " + jacobianStatus, 5, 35)
+    physicalCtx.fillText("[c] De-Casteljau: " + deCasteljauCurveStatus, 5, 50)
 
   }
 
