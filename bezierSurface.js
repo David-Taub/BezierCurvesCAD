@@ -1262,6 +1262,10 @@ function main(inputSurfaces)
         quadSurfaces[2 * j + 1].points.push(subCurves[1])
       }
     }
+    for (var i = 0; i < quadSurfaces.length; i++)
+    {
+      quadSurfaces[i] = transposeSurface(quadSurfaces[i])
+    }
     return quadSurfaces
   }
 
