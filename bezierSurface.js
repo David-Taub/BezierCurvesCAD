@@ -1,7 +1,8 @@
 $( document ).ready(function()
 {
-  var surface = {"name":"1","points":[[{"x":0.038,"y":0.242},{"x":0.34286000000000005,"y":0.348691985168457},{"x":0.49352,"y":0.368131985168457},{"x":0.5684051137924195,"y":0.36466761550903315},{"x":0.844,"y":0.066}],[{"x":0.25200568199157714,"y":0.4499943180084229},{"x":0.41252000000000005,"y":0.5025919975280762},{"x":0.49352460241317747,"y":0.5291553975868225},{"x":0.5939646024131775,"y":0.5097153975868226},{"x":0.67,"y":0.4051999969482422}],[{"x":0.3056046024131775,"y":0.5680353975868225},{"x":0.4254846024131775,"y":0.5971953975868225},{"x":0.48866460241317744,"y":0.5955753975868225},{"x":0.6085446024131775,"y":0.5761353975868225},{"x":0.768,"y":0.5491999969482422}],[{"x":0.28130460241317745,"y":0.6781953975868225},{"x":0.4044246024131775,"y":0.7041153975868225},{"x":0.4928051137924194,"y":0.6544676155090332},{"x":0.6926051137924194,"y":0.7228676155090332},{"x":0.794,"y":0.75}],[{"x":0.08420511379241946,"y":0.9157948862075805},{"x":0.3812051137924194,"y":0.7786676155090333},{"x":0.5216051137924195,"y":0.7948676155090333},{"x":0.7142051137924195,"y":0.8398676155090332},{"x":0.986,"y":0.952}]]}
-  main([surface])
+  var defaultSurfaces = [{"name":"1","points":[[{"x":0.14900511379241937,"y":0.20165},{"x":0.5810051137924194,"y":0.35645000000000004},{"x":0.9180056819915772,"y":0.1552272720336914}],[{"x":0.4676051137924194,"y":0.5058499999999999},{"x":0.6098051137924194,"y":0.49145},{"x":0.7736051137924195,"y":0.49685}],[{"x":0.22400568199157714,"y":0.8532272720336914},{"x":0.6116051137924194,"y":0.59225},{"x":0.9920056819915771,"y":0.8152272720336914}]]}]
+
+  main(defaultSurfaces)
 
 })
 
@@ -10,7 +11,7 @@ function main(inputSurfaces)
   var HISTORY_MAX_SIZE = 50
   var HIGH_RES_PIX_PER_SAMPLE  = 5
   var LOW_RES_PIX_PER_SAMPLE  = 30
-  var BLACK_JACOBIAN_THRESHOLD = 0.01
+  var BLACK_JACOBIAN_THRESHOLD = 0.003
 
   var currentlyDrawingJacobian = false
   var jacobianData = []
@@ -407,7 +408,7 @@ function main(inputSurfaces)
   //Add to canvas lines and dots of given polygon
   // (polygon is open, last and first dots are not drawn)
   // used to draw the control polygon and the DeCasteljau skeleton
-  function drawPolygon(polygonPoints, lineWidth, lineColor, dotColor, isCurrent, lineIndex)
+  function drawPolygon(polygonPoints, lineWidth, lineColor, dotColor, isCurrent, rowIndex)
   {
     physicalCtx.lineWidth = lineWidth
     physicalCtx.beginPath()
@@ -425,12 +426,12 @@ function main(inputSurfaces)
       physicalCtx.strokeStyle = lineColor
       physicalCtx.lineTo(polygonPoints[i].x * width, height1 * (1 - polygonPoints[i].y))
       physicalCtx.stroke()
-      if (isCurrent && lineIndex != -1)
+      if (isCurrent && rowIndex != -1)
       {
         //Write Point id
         physicalCtx.fillStyle = "rgb(0, 0, 0)"
         physicalCtx.font="15px Courier New"
-        pointString = "P(" + lineIndex.toString() + "," + i.toString() + ")"
+        pointString = "P(" + rowIndex.toString() + "," + i.toString() + ")"
         physicalCtx.fillText(pointString, width * polygonPoints[i].x + 10, height1 * ( 1- polygonPoints[i].y))
       }
     }
@@ -517,8 +518,8 @@ function main(inputSurfaces)
           shade = 0
         }
         color = shadeToColor(shade)
-        jacobianData[jacobianData.length - 1].push(color)
       }
+      jacobianData[jacobianData.length - 1].push(color)
       physicalCtx.fillStyle = color
       physicalCtx.fillRect(point.x * width, height1 * (1 - point.y), pixelsPerSample, pixelsPerSample)
       parameterCtx.fillStyle = color
@@ -568,8 +569,8 @@ function main(inputSurfaces)
     //Draw point on surface
     drawParameterLine(pointOnSurface.x, false, "rgb(255, 0, 255)")
     drawParameterLine(pointOnSurface.y, true, "rgb(255, 0, 255)")
-    plotCurveOnSurface(surfaces[currentSurfaceId], pointOnSurface.x, false, "rgb(255, 0, 255)");
-    plotCurveOnSurface(surfaces[currentSurfaceId], pointOnSurface.y, true, "rgb(255, 0, 255)");
+    plotCurveOnSurface(surfaces[currentSurfaceId], pointOnSurface.x, true, "rgb(255, 0, 255)");
+    plotCurveOnSurface(surfaces[currentSurfaceId], pointOnSurface.y, false, "rgb(255, 0, 255)");
   }
 
   function drawSurfaceControls(surface, lineColor, dotColor, isCurrent)
@@ -581,12 +582,12 @@ function main(inputSurfaces)
     }
     for (var i = 0; i < surface.points.length; i++)
     {
-      lineIndex = -1
+      rowIndex = -1
       if (!shouldDrawJacobian)
       {
-        lineIndex = i
+        rowIndex = i
       }
-      drawPolygon(surface.points[i], doublePlotWidth, lineColor, dotColor, isCurrent, lineIndex)
+      drawPolygon(surface.points[i], doublePlotWidth, lineColor, dotColor, isCurrent, rowIndex)
     }
   }
 
@@ -923,6 +924,7 @@ function main(inputSurfaces)
       return
     }
 
+    //lines over mouse position, parameter space
     drawParameterLine(mouseOnParameterSpace.x, false, "rgb(0, 255, 0)")
     drawParameterLine(mouseOnParameterSpace.y, true, "rgb(0, 255, 0)")
 
@@ -1059,13 +1061,13 @@ function main(inputSurfaces)
         {
           nextStepSkeletonRow.push({
             x : skeletonPoints[k][i][j].x * (1 - u) * (1 - v)+
-                skeletonPoints[k][i + 1][j].x * u * (1 - v) +
-                skeletonPoints[k][i][j + 1].x * (1 - u) * v +
-                skeletonPoints[k][i + 1][j + 1].x * u * v,
+                skeletonPoints[k][i + 1][j].x * v * (1 - u) +
+                skeletonPoints[k][i][j + 1].x * (1 - v) * u +
+                skeletonPoints[k][i + 1][j + 1].x * v * u,
             y : skeletonPoints[k][i][j].y * (1 - u) * (1 - v)+
-                skeletonPoints[k][i + 1][j].y * u * (1 - v) +
-                skeletonPoints[k][i][j + 1].y * (1 - u) * v +
-                skeletonPoints[k][i + 1][j + 1].y * u * v
+                skeletonPoints[k][i + 1][j].y * v * (1 - u) +
+                skeletonPoints[k][i][j + 1].y * (1 - v) * u +
+                skeletonPoints[k][i + 1][j + 1].y * v * u
           })
         }
         nextStepSkeleton.push(nextStepSkeletonRow)
@@ -1077,7 +1079,7 @@ function main(inputSurfaces)
     //If more rows than columns in given points matrix
     if (skeletonPoints[skeletonPoints.length - 1].length > 1)
     {
-      var skeletonCurve = deCasteljauCurve(getColumn(skeletonPoints.pop(), 0), u)
+      var skeletonCurve = deCasteljauCurve(getColumn(skeletonPoints.pop(), 0), v)
       for (var i = 0; i < skeletonCurve.length; i++)
       {
         skeletonPoints.push([skeletonCurve[i]])
@@ -1087,7 +1089,7 @@ function main(inputSurfaces)
     //If more columns than rows in given points matrix
     if (skeletonPoints[skeletonPoints.length - 1][0].length > 1)
     {
-      var skeletonCurve = deCasteljauCurve(skeletonPoints.pop()[0], v)
+      var skeletonCurve = deCasteljauCurve(skeletonPoints.pop()[0], u)
       for (var i = 0; i < skeletonCurve.length; i++)
       {
         skeletonPoints.push([skeletonCurve[i]])
@@ -1122,19 +1124,21 @@ function main(inputSurfaces)
       p10 = bilinearPatch[1][0]
       p01 = bilinearPatch[0][1]
       p11 = bilinearPatch[1][1]
+
     }
     else if (rows > columns)
     {
       skeleton = tensor(surface, u, v)
       strip = skeleton[columns - 2]
       points00 = getColumn(strip, 0)
-      points01 = getColumn(strip, 0)
-      points10 = getColumn(strip, 1)
+      points10 = getColumn(strip, 0)
+      points01 = getColumn(strip, 1)
       points11 = getColumn(strip, 1)
-      points00.splice(0, 1)
+      points00.splice(points00.length - 1, 1)
       points01.splice(points01.length - 1, 1)
       points10.splice(0, 1)
-      points11.splice(points11.length - 1, 1)
+      points11.splice(0, 1)
+
       p00 = deCasteljauCurve(points00, u).pop()[0]
       p01 = deCasteljauCurve(points01, u).pop()[0]
       p10 = deCasteljauCurve(points10, u).pop()[0]
@@ -1177,11 +1181,32 @@ function main(inputSurfaces)
     p01 = bilinearPatch[1]
     p10 = bilinearPatch[2]
     p11 = bilinearPatch[3]
+    /*
+    10 -------- 11
+    |           |
+    |1-v        |1-v
+    |    df/du  |
+    |---------->|
+    |           |
+    |v          |v
+    |           |
+    00 -------- 01
 
-    dxdu = ((1 - v) * (p00.x - p10.x) + v * (p01.x - p11.x)) * surface.points.length
-    dydu = ((1 - v) * (p00.y - p10.y) + v * (p01.y - p11.y)) * surface.points.length
-    dxdv = ((1 - u) * (p00.x - p01.x) + u * (p10.x - p11.x)) * surface.points[0].length
-    dydv = ((1 - u) * (p00.y - p01.y) + u * (p10.y - p11.y)) * surface.points[0].length
+    10 -------- 11
+    |  u /\  1-u |
+    |    |       |
+    |    |df/dv  |
+    |    |       |
+    |    |       |
+    |    |       |
+    |  u |  1-u  |
+    00 -------- 01
+    */
+    dxdu = ((1 - v) * (p00.x - p01.x) + v * (p10.x - p11.x)) * surface.points.length
+    dydu = ((1 - v) * (p00.y - p01.y) + v * (p10.y - p11.y)) * surface.points.length
+    dxdv = ((1 - u) * (p00.x - p10.x) + u * (p01.x - p11.x)) * surface.points[0].length
+    dydv = ((1 - u) * (p00.y - p10.y) + u * (p01.y - p11.y)) * surface.points[0].length
+
     jacobianDeterminant = (dxdu * dydv) - (dydu * dxdv)
     /*
     Note:
@@ -1201,7 +1226,8 @@ function main(inputSurfaces)
     var semiSurfaces = [[], []]
     for (var i = 0; i < surface.points.length; i++)
     {
-      var subCurves = splitCurve(surface.points[i], u)
+      //split all rows
+      var subCurves = splitCurve(surface.points[i], v)
       semiSurfaces[0].push(subCurves[0])
       semiSurfaces[1].push(subCurves[1])
     }
@@ -1224,12 +1250,14 @@ function main(inputSurfaces)
       }
     ]
 
-    //divide on v axis
+    //divide on u axis
     for (var j = 0; j < 2; j++)
     {
       for (var i = 0; i < semiSurfaces[0][0].length; i++)
       {
-        var subCurves = splitCurve(getColumn(semiSurfaces[j], i), v)
+        console.log(getColumn(semiSurfaces[j], i))
+        var subCurves = splitCurve(getColumn(semiSurfaces[j], i), u)
+        console.log(subCurves[0])
         quadSurfaces[2 * j].points.push(subCurves[0])
         quadSurfaces[2 * j + 1].points.push(subCurves[1])
       }
