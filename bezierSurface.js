@@ -10,9 +10,9 @@ function main(inputSurfaces)
   var HISTORY_MAX_SIZE = 50
   var HIGH_RES_PIX_PER_SAMPLE  = 5
   var LOW_RES_PIX_PER_SAMPLE  = 30
-  var BLACK_JACOBIAN_THRESHOLD = 0.1
+  var BLACK_JACOBIAN_THRESHOLD = 0.01
 
-
+  var jacobianData = []
   var shouldDrawJacobian = true
   var lastDrawTimestamp = (new Date).getTime()
   var lastLowResDrawn = 0
@@ -459,21 +459,22 @@ function main(inputSurfaces)
     {
       return
     }
-    if (v >= 1 || (lastDrawTimestamp > movementTime))
+    if ((v >= 1) || (lastDrawTimestamp > movementTime))
     {
       return
     }
+    jacobianData.push([])
     for (var u = 0; u < 1; u += step)
     {
       point = tensor(surfaces[currentSurfaceId], u, v).pop()[0][0]
       jacVal = getJacobian(surfaces[currentSurfaceId], u, v)
-
+      jacobianData[jacobianData.length - 1].push(jacVal)
       /*
       Note:
       Here we set a range that will be colored black.
       This will give visual indication of the area where the Jacobian is "zero"
       */
-      if (Math.abs(jacVal) < BLACK_JACOBIAN_THRESHOLD)
+      if (Math.abs(jacVal) < BLACK_JACOBIAN_THRESHOLD * (max - min))
       {
         color = "rgb(0, 0, 0)"
       }
@@ -708,6 +709,7 @@ function main(inputSurfaces)
     {
       return
     }
+    console.log(mouseOnParameterSpace)
     parameterCtx.fillStyle="rgb(0, 0, 0)"
     parameterCtx.font="bold 15px Courier New"
     parameterCtx.fillText("Param: (" + mouseOnParameterSpace.x.toFixed(2) + ", " + mouseOnParameterSpace.y.toFixed(2) +")", 5, 20)
@@ -866,8 +868,8 @@ function main(inputSurfaces)
       plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnParameterSpace.x, true, "rgb(0, 255, 0)");
       plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnParameterSpace.y, false, "rgb(0, 255, 0)");
       //Draw dot
-      physicalMouseCoordinates = tensor(surfaces[currentSurfaceId], mouseOnParameterSpace.x, mouseOnParameterSpace.y).pop()[0]
-      drawPolygon(physicalMouseCoordinates, plotWidth, "rgb(0, 0, 0)", "rgb(0, 0, 0)", false, -1)
+      physicalMouseCoordinates = tensor(surfaces[currentSurfaceId], mouseOnParameterSpace.x, mouseOnParameterSpace.y).pop()[0][0]
+      drawPolygon([physicalMouseCoordinates], plotWidth, "rgb(0, 0, 0)", "rgb(0, 0, 0)", false, -1)
     }
     return physicalMouseCoordinates
   }
