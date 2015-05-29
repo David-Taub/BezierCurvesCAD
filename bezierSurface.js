@@ -1255,9 +1255,7 @@ function main(inputSurfaces)
     {
       for (var i = 0; i < semiSurfaces[0][0].length; i++)
       {
-        console.log(getColumn(semiSurfaces[j], i))
         var subCurves = splitCurve(getColumn(semiSurfaces[j], i), u)
-        console.log(subCurves[0])
         quadSurfaces[2 * j].points.push(subCurves[0])
         quadSurfaces[2 * j + 1].points.push(subCurves[1])
       }
