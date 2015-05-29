@@ -12,6 +12,7 @@ function main(inputSurfaces)
   var LOW_RES_PIX_PER_SAMPLE  = 30
   var BLACK_JACOBIAN_THRESHOLD = 0.01
 
+  var currentlyDrawingJacobian = false
   var jacobianData = []
   var shouldDrawJacobian = true
   var lastDrawTimestamp = (new Date).getTime()
@@ -43,7 +44,7 @@ function main(inputSurfaces)
     $("#downloadButton").click(saveSurfaces)
     $("#surfacesList").change(changeCurrentSurface)
     $("#parameterCanvas").mousemove(mouseMoveParameter)
-    $("#parameterCanvas").mouseleave(function () {mouseOnParameterSpace = -1})
+    $("#parameterCanvas").mouseleave(function () {mouseOnParameterSpace = -1;redrawJacobianData()})
     $("#parameterCanvas").mouseup(mouseUpParameter)
     $("#physicalCanvas").mousemove(drag)
     $("#physicalCanvas").mousedown(startDrag)
@@ -457,10 +458,12 @@ function main(inputSurfaces)
   {
     if(surfaces.length == 0)
     {
+      currentlyDrawingJacobian = false
       return
     }
     if ((v >= 1) || (lastDrawTimestamp > movementTime))
     {
+      currentlyDrawingJacobian = false
       return
     }
     jacobianData.push([])
@@ -468,7 +471,7 @@ function main(inputSurfaces)
     {
       point = tensor(surfaces[currentSurfaceId], u, v).pop()[0][0]
       jacVal = getJacobian(surfaces[currentSurfaceId], u, v)
-      jacobianData[jacobianData.length - 1].push(jacVal)
+
       /*
       Note:
       Here we set a range that will be colored black.
@@ -498,6 +501,7 @@ function main(inputSurfaces)
           shade = 0
         }
         color = shadeToColor(shade)
+        jacobianData[jacobianData.length - 1].push(color)
       }
       physicalCtx.fillStyle = color
       physicalCtx.fillRect(point.x * width, height1 * (1 - point.y), pixelsPerSample, pixelsPerSample)
@@ -520,6 +524,8 @@ function main(inputSurfaces)
       minMax = findMinMaxJacobian(LOW_RES_PIX_PER_SAMPLE.toFixed(2) / width)
       min = minMax[0]
       max = minMax[1]
+      jacobianData = []
+      currentlyDrawingJacobian = true
       drawJacobianRow(0, HIGH_RES_PIX_PER_SAMPLE, HIGH_RES_PIX_PER_SAMPLE / (2 * width), lastDrawTimestamp, min, max)
     }
   }
@@ -690,6 +696,11 @@ function main(inputSurfaces)
 
   function writeStatus(physicalMouseCoordinates)
   {
+    writeStatusParameter(physicalMouseCoordinates)
+    writeStatusPhysical(physicalMouseCoordinates)
+  }
+  function writeStatusPhysical(physicalMouseCoordinates)
+  {
     var deCasteljauCurveStatus = "Off"
     var jacobianStatus = "Off"
     if (shouldDrawJacobian)
@@ -705,11 +716,15 @@ function main(inputSurfaces)
     physicalCtx.fillText("[j] Jacobian: " + jacobianStatus, 5, 20)
     physicalCtx.fillText("[c] De-Casteljau: " + deCasteljauCurveStatus, 5, 35)
 
+  }
+
+  function writeStatusParameter(physicalMouseCoordinates)
+  {
+
     if (mouseOnParameterSpace == -1)
     {
       return
     }
-    console.log(mouseOnParameterSpace)
     parameterCtx.fillStyle="rgb(0, 0, 0)"
     parameterCtx.font="bold 15px Courier New"
     parameterCtx.fillText("Param: (" + mouseOnParameterSpace.x.toFixed(2) + ", " + mouseOnParameterSpace.y.toFixed(2) +")", 5, 20)
@@ -814,6 +829,31 @@ function main(inputSurfaces)
     if(!shouldDrawJacobian)
     {
       redraw()
+      return
+    }
+    if(currentlyDrawingJacobian)
+    {
+      return
+    }
+    redrawJacobianData()
+    writeStatusParameter(tensor(surfaces[currentSurfaceId], mouseOnParameterSpace.x, mouseOnParameterSpace.y).pop()[0][0])
+  }
+
+
+  function redrawJacobianData()
+  {
+
+    if((!shouldDrawJacobian) || currentlyDrawingJacobian)
+    {
+      return
+    }
+    for (var row = 0; row < jacobianData.length; row++)
+    {
+      for (var column = 0; column < jacobianData[0].length; column++)
+      {
+        parameterCtx.fillStyle = jacobianData[row][column]
+        parameterCtx.fillRect(column * HIGH_RES_PIX_PER_SAMPLE / 2 , height1 - row * HIGH_RES_PIX_PER_SAMPLE / 2, HIGH_RES_PIX_PER_SAMPLE, HIGH_RES_PIX_PER_SAMPLE)
+      }
     }
   }
 
