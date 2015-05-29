@@ -185,10 +185,6 @@ function main(inputSurfaces)
   {
     switch(ev.keyCode)
     {
-      //DELETE
-      case 46:
-        deletePoint(ev.ctrlKey)
-        break
       //+
       case 187:
       case 107:
@@ -233,16 +229,6 @@ function main(inputSurfaces)
           redo()
         }
         break
-      //N
-      case 78:
-        currentSurfaceId++
-        if (currentSurfaceId == surfaces.length)
-        {
-          currentSurfaceId = 0
-        }
-        updateSurfacesList()
-        redraw()
-        break
     }
   }
 
@@ -262,105 +248,6 @@ function main(inputSurfaces)
   }
 
 
-  //Add point as last in polygon, coordinates are between 0 to 1
-  //If isNewCurve is true create a new curve and add the point to it.
-  //Otherwise adds the point to the current curve.
-  function addPoint(clickPoint, addRow)
-  {
-    //handle empty canvas
-    if (surfaces.length == 0)
-    {
-      surfaces = [{
-        name : "0",
-        points : [[clickPoint]]
-      }]
-      currentSurfaceId = 0
-      updateSurfacesList()
-      redraw()
-      return
-    }
-    surface = surfaces[currentSurfaceId]
-    if (addRow)
-    {
-      surface = transposeSurface(surface)
-    }
-    var pointsLength = surface.points.length
-
-    //Find closest point on last column
-    var minimumDistance = 10
-    var minimumIndex = -1
-    for(var i = 0; i < surface.points[0].length; i++)
-    {
-      var distance = calcDistanceSquare(clickPoint, surface.points[pointsLength - 1][i])
-      if (distance < minimumDistance)
-      {
-        minimumDistance = distance
-        minimumIndex = i
-      }
-    }
-    //get distance from closest point
-    var diffY = clickPoint.y - surface.points[pointsLength - 1][minimumIndex].y
-    var diffX = clickPoint.x - surface.points[pointsLength - 1][minimumIndex].x
-    //add column
-    var newColumn = []
-    for(var i = 0; i < surface.points[0].length; i++)
-    {
-      newColumn.push({
-        x : surface.points[pointsLength - 1][i].x + diffX,
-        y : surface.points[pointsLength - 1][i].y + diffY
-      })
-    }
-    surface.points.push(newColumn)
-    if (addRow)
-    {
-      surface = transposeSurface(surface)
-    }
-    surfaces[currentSurfaceId] = surface
-    redraw()
-    return
-  }
-
-
-  //Delete last point in polygon of the current curve.
-  //remove curve if it has no points
-  function deletePoint(deleteRow)
-  {
-    if (surfaces.length == 0)
-    {
-      return
-    }
-    pushToHistory()
-    if (!deleteRow)
-    {
-      //Column
-      surfaces[currentSurfaceId].points.pop()
-    }
-    else
-    {
-      //Row
-      for (var i = 0; i < surfaces[currentSurfaceId].points.length; i++)
-      {
-        surfaces[currentSurfaceId].points[i].pop()
-      }
-    }
-    removeCurrentIfEmpty()
-    redraw()
-  }
-
-  function removeCurrentIfEmpty()
-  {
-    //remove empty surfaces
-    if (surfaces[currentSurfaceId].points.length == 0 ||
-        surfaces[currentSurfaceId].points[0].length == 0)
-    {
-      surfaces.splice(currentSurfaceId, 1)
-      if (currentSurfaceId > 0)
-      {
-        currentSurfaceId--
-      }
-      updateSurfacesList()
-    }
-  }
 
   function getLinesAmountInGrid()
   {
@@ -820,11 +707,6 @@ function main(inputSurfaces)
   {
     pushToHistory()
     var clickCoordinates = getXY(ev, physicalCanvas)
-    if (ev.ctrlKey)
-    {
-      addPoint(clickCoordinates, ev.shiftKey)
-      return
-    }
 
     if (surfaces.length == 0 || surfaces[currentSurfaceId].points.length == 0)
     {
