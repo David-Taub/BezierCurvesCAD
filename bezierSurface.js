@@ -477,7 +477,10 @@ function main(inputSurfaces)
     }
     if ((v >= 1) || (lastDrawTimestamp > movementTime))
     {
-      currentlyDrawingJacobian = false
+      if (v >= 1)
+      {
+        currentlyDrawingJacobian = false
+      }
       return
     }
     jacobianData.push([])
