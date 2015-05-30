@@ -27,7 +27,7 @@ function main(inputSurfaces)
   var physicalCanvas, physicalCtx
   var parameterCanvas, parameterCtx
   var width, height, height1, plotWidth, doublePlotWidth,  dragId = -1
-
+  var zoomDepth = 1
   init()
   redraw()
 
@@ -45,7 +45,7 @@ function main(inputSurfaces)
     $("#downloadButton").click(saveSurfaces)
     $("#surfacesList").change(changeCurrentSurface)
     $("#parameterCanvas").mousemove(mouseMoveParameter)
-    $("#parameterCanvas").mouseleave(function () {mouseOnParameterSpace = -1;redrawJacobianData()})
+    $("#parameterCanvas").mouseleave(mouseLeave)
     $("#parameterCanvas").mouseup(mouseUpParameter)
     $("#physicalCanvas").mousemove(drag)
     $("#physicalCanvas").mousedown(startDrag)
@@ -55,7 +55,16 @@ function main(inputSurfaces)
     $(document).keyup(onKeyUp)
     $("#radio10").prop("checked", true)
   }
-
+  function mouseLeave()
+  {
+    mouseOnParameterSpace = -1
+    if (shouldDrawJacobian)
+    {
+      redrawJacobianData()
+      return
+    }
+    redraw()
+  }
   function undo()
   {
     //Nothing in history
@@ -188,18 +197,14 @@ function main(inputSurfaces)
       //+
       case 187:
       case 107:
-        if (zoom(true))
-        {
-          redraw()
-        }
+        zoom(true)
+        redraw()
         break
       //-
       case 189:
       case 109:
-        if (zoom(false))
-        {
-          redraw()
-        }
+        zoom(false)
+        redraw()
         break
       //S
       case 83:
@@ -358,8 +363,9 @@ function main(inputSurfaces)
   to avoid freezing the canvas with a single and heavy event handler that calculates
   the Jacobian value of all pixel. JS multi-threading might make this even faster.
   */
-  function drawJacobianRow(v, pixelsPerSample, step, movementTime, min, max)
+  function drawJacobianRow(v, pixelsPerSample, movementTime, min, max)
   {
+    step = pixelsPerSample / (2 * width)
     if(surfaces.length == 0)
     {
       currentlyDrawingJacobian = false
@@ -367,7 +373,6 @@ function main(inputSurfaces)
     }
     if ((v >= 1) || (lastDrawTimestamp > movementTime))
     {
-
       if (v >= 1)
       {
         currentlyDrawingJacobian = false
@@ -412,11 +417,11 @@ function main(inputSurfaces)
       }
       jacobianData[jacobianData.length - 1].push(color)
       physicalCtx.fillStyle = color
-      physicalCtx.fillRect(point.x * width, height1 * (1 - point.y), pixelsPerSample, pixelsPerSample)
+      physicalCtx.fillRect(point.x * width, height1 * (1 - point.y), pixelsPerSample * zoomDepth, pixelsPerSample * zoomDepth)
       parameterCtx.fillStyle = color
       parameterCtx.fillRect(u * width, height1 * (1 - v), pixelsPerSample, pixelsPerSample)
     }
-    setTimeout(function(){drawJacobianRow(v + step, pixelsPerSample, step, movementTime, min, max)})
+    setTimeout(function(){drawJacobianRow(v + step, pixelsPerSample, movementTime, min, max)})
   }
 
   function drawJacobian()
@@ -434,7 +439,7 @@ function main(inputSurfaces)
       max = minMax[1]
       jacobianData = []
       currentlyDrawingJacobian = true
-      drawJacobianRow(0, HIGH_RES_PIX_PER_SAMPLE, HIGH_RES_PIX_PER_SAMPLE / (2 * width), lastDrawTimestamp, min, max)
+      drawJacobianRow(0, HIGH_RES_PIX_PER_SAMPLE, lastDrawTimestamp, min, max)
     }
   }
 
@@ -443,11 +448,6 @@ function main(inputSurfaces)
     if (surfaces.length == 0)
     {
       return
-    }
-    //zoom out if needed
-    while(isExceedingCanvas(surfaces))
-    {
-      zoom(false)
     }
     for (var i = 0; i < surfaces.length; i++)
     {
@@ -566,23 +566,6 @@ function main(inputSurfaces)
     return newSurface
   }
 
-  function isExceedingCanvas(surfacesList)
-  {
-    for (var k = 0; k < surfacesList.length; k++)
-    {
-      for (var i = 0; i < surfacesList[k].points.length; i++)
-      {
-        for (var j = 0; j < surfacesList[k].points[i].length; j++)
-        {
-          if (surfacesList[k].points[i][j].x < 0 || surfacesList[k].points[i][j].x > 1 ||
-              surfacesList[k].points[i][j].y < 0 || surfacesList[k].points[i][j].y > 1)
-            return true
-        }
-      }
-    }
-    return false
-  }
-
   function zoom(zoomIn)
   {
     var surfacesCopy = $.extend(true, [], surfaces)
@@ -591,6 +574,7 @@ function main(inputSurfaces)
     {
       factor = 1.1
     }
+    zoomDepth *= factor
     for (var k = 0; k < surfacesCopy.length; k++)
     {
       for (var i = 0; i < surfacesCopy[k].points.length; i++)
@@ -607,12 +591,7 @@ function main(inputSurfaces)
         }
       }
     }
-    if (!isExceedingCanvas(surfacesCopy))
-    {
-      surfaces = surfacesCopy
-      return true
-    }
-    return false
+    surfaces = surfacesCopy
   }
 
   function writeStatus(physicalMouseCoordinates)
@@ -647,6 +626,9 @@ function main(inputSurfaces)
     {
       return
     }
+
+    parameterCtx.fillStyle="rgba(255, 255, 255, 0.9)"
+    parameterCtx.fillRect(0,1,200,70);
     parameterCtx.fillStyle="rgb(0, 0, 0)"
     parameterCtx.font="bold 15px Courier New"
     parameterCtx.fillText("Param: (" + mouseOnParameterSpace.x.toFixed(2) + ", " + mouseOnParameterSpace.y.toFixed(2) +")", 5, 20)

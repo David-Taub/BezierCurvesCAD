@@ -45,7 +45,7 @@ function main(inputSurfaces)
     $("#downloadButton").click(saveSurfaces)
     $("#surfacesList").change(changeCurrentSurface)
     $("#parameterCanvas").mousemove(mouseMoveParameter)
-    $("#parameterCanvas").mouseleave(function () {mouseOnParameterSpace = -1;redrawJacobianData()})
+    $("#parameterCanvas").mouseleave(mouseLeave)
     $("#parameterCanvas").mouseup(mouseUpParameter)
     $("#physicalCanvas").mousemove(drag)
     $("#physicalCanvas").mousedown(startDrag)
@@ -55,7 +55,16 @@ function main(inputSurfaces)
     $(document).keyup(onKeyUp)
     $("#radio10").prop("checked", true)
   }
-
+  function mouseLeave()
+  {
+    mouseOnParameterSpace = -1
+    if (shouldDrawJacobian)
+    {
+      redrawJacobianData()
+      return
+    }
+    redraw()
+  }
   function undo()
   {
     //Nothing in history
@@ -730,6 +739,9 @@ function main(inputSurfaces)
     {
       return
     }
+
+    parameterCtx.fillStyle="rgba(255, 255, 255, 0.9)"
+    parameterCtx.fillRect(0,1,200,70);
     parameterCtx.fillStyle="rgb(0, 0, 0)"
     parameterCtx.font="bold 15px Courier New"
     parameterCtx.fillText("Param: (" + mouseOnParameterSpace.x.toFixed(2) + ", " + mouseOnParameterSpace.y.toFixed(2) +")", 5, 20)
