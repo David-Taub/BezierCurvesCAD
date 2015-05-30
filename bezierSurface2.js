@@ -611,6 +611,10 @@ function main(inputSurfaces)
     {
       deCasteljauCurveStatus = "On"
     }
+    //White background
+    physicalCtx.fillStyle="rgba(255, 255, 255, 0.9)"
+    physicalCtx.fillRect(0,1,200,70);
+    //text
     physicalCtx.fillStyle="rgb(0, 0, 0)"
     physicalCtx.font="15px Courier New"
     physicalCtx.fillText("[+/-] Zoom", 5, 20)
@@ -626,9 +630,10 @@ function main(inputSurfaces)
     {
       return
     }
-
+    //white background
     parameterCtx.fillStyle="rgba(255, 255, 255, 0.9)"
     parameterCtx.fillRect(0,1,200,70);
+    //text
     parameterCtx.fillStyle="rgb(0, 0, 0)"
     parameterCtx.font="bold 15px Courier New"
     parameterCtx.fillText("Param: (" + mouseOnParameterSpace.x.toFixed(2) + ", " + mouseOnParameterSpace.y.toFixed(2) +")", 5, 20)
