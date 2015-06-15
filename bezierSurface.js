@@ -54,7 +54,9 @@ function main(inputSurfaces)
     //Mobile support
     $(document).keyup(onKeyUp)
     $("#radio10").prop("checked", true)
+    pushToHistory()
   }
+
   function mouseLeave()
   {
     mouseOnParameterSpace = -1
@@ -492,47 +494,47 @@ function main(inputSurfaces)
       }
       return
     }
-    jacobianData.push([])
-    for (var u = 0; u < 1; u += step)
-    {
+      jacobianData.push([])
+      for (var u = 0; u < 1; u += step)
+      {
       point = tensor(surfaces[currentSurfaceId], u, v).pop()[0][0]
       jacVal = getJacobian(surfaces[currentSurfaceId], u, v)
 
-      /*
-      Note:
-      Here we set a range that will be colored black.
-      This will give visual indication of the area where the Jacobian is "zero"
-      */
-      if (Math.abs(jacVal) < BLACK_JACOBIAN_THRESHOLD * (max - min))
-      {
-        color = "rgb(0, 0, 0)"
-      }
-      else
-      {
-        shade = (jacVal - min) / (max - min)
         /*
         Note:
-        To determine an approximation of the Jacobian values range, we sampled the surface
-        before drawing the values in higher resolution. Values that are drawn in between the
-        samples might exceed the max\min that was sampled, so we round these exceeding values
-        to fit in the approximated range. If the sampling resolution constant is high enough
-        and the surface is not to extreme in its values, it shouldn't be visible.
+        Here we set a range that will be colored black.
+        This will give visual indication of the area where the Jacobian is "zero"
         */
-        if (shade > 1)
+        if (Math.abs(jacVal) < BLACK_JACOBIAN_THRESHOLD * (max - min))
         {
-          shade = 1
+          color = "rgb(0, 0, 0)"
         }
-        if ( shade < 0)
+        else
         {
-          shade = 0
+          shade = (jacVal - min) / (max - min)
+          /*
+          Note:
+          To determine an approximation of the Jacobian values range, we sampled the surface
+          before drawing the values in higher resolution. Values that are drawn in between the
+          samples might exceed the max\min that was sampled, so we round these exceeding values
+          to fit in the approximated range. If the sampling resolution constant is high enough
+          and the surface is not to extreme in its values, it shouldn't be visible.
+          */
+          if (shade > 1)
+          {
+            shade = 1
+          }
+          if ( shade < 0)
+          {
+            shade = 0
+          }
+          color = shadeToColor(shade)
         }
-        color = shadeToColor(shade)
-      }
-      jacobianData[jacobianData.length - 1].push(color)
-      physicalCtx.fillStyle = color
-      physicalCtx.fillRect(point.x * width, height1 * (1 - point.y), pixelsPerSample * zoomDepth, pixelsPerSample * zoomDepth)
-      parameterCtx.fillStyle = color
-      parameterCtx.fillRect(u * width, height1 * (1 - v), pixelsPerSample, pixelsPerSample)
+        jacobianData[jacobianData.length - 1].push(color)
+        physicalCtx.fillStyle = color
+        physicalCtx.fillRect(point.x * width, height1 * (1 - point.y), pixelsPerSample * zoomDepth, pixelsPerSample * zoomDepth)
+        parameterCtx.fillStyle = color
+        parameterCtx.fillRect(u * width, height1 * (1 - v), pixelsPerSample, pixelsPerSample)
     }
     setTimeout(function(){drawJacobianRow(v + step, pixelsPerSample, movementTime, min, max)})
   }

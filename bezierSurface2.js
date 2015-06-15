@@ -246,7 +246,7 @@ function main(inputSurfaces)
     pushToHistory()
     surface = surfaces[currentSurfaceId]
     var newSurfaces = subDivideSurface(surface, pointOnSurface.x, pointOnSurface.y)
-    surfaces.splice(currentSurfaceId, 1, newSurfaces[0], newSurfaces[1], newSurfaces[2], newSurfaces[3])
+    surfaces = [newSurfaces[0]]
 
     updateSurfacesList()
     redraw()
@@ -647,6 +647,7 @@ function main(inputSurfaces)
   {
     surfaces = [surfaces[0]]
     makePlanar4(surfaces[0])
+    updateSurfacesList()
   }
 
   function redraw()
