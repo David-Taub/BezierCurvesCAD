@@ -169,7 +169,7 @@ function main(inputSurfaces)
   //download current surfaces in JSON format
   function saveSurfaces()
   {
-    download("surfaces.json", JSON.stringify(surfaces))
+    download("surfaces.json", JSON.stringify(surfaces, null, 2))
   }
 
   //Download given text as a file with the given filename

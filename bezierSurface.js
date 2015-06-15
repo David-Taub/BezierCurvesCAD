@@ -57,6 +57,42 @@ function main(inputSurfaces)
     pushToHistory()
   }
 
+  function add(point1, point2)
+  {
+    return {
+      x:point1.x + point2.x,
+      x:point1.y + point2.y,
+    }
+
+  }
+
+  function addScalar(point, scalar)
+  {
+    return {
+      x:point.x + scalar,
+      x:point.y + scalar,
+    }
+
+  }
+
+
+  function sub(point1, point2)
+  {
+    return {
+      x:point1.x - point2.x,
+      x:point1.y - point2.y,
+    }
+
+  }
+
+  function mul(point, scalar)
+  {
+    return {
+      x:point.x * scalar,
+      x:point.y * scalar,
+    }
+  }
+
   function mouseLeave()
   {
     mouseOnParameterSpace = -1
@@ -261,7 +297,7 @@ function main(inputSurfaces)
     }
     pushToHistory()
     surface = surfaces[currentSurfaceId]
-    var newSurfaces = subDivideSurface(surface, pointOnSurface.x, pointOnSurface.y)
+    var newSurfaces = subDivideSurface(surface, pointOnSurface.u, pointOnSurface.v)
     surfaces.splice(currentSurfaceId, 1, newSurfaces[0], newSurfaces[1], newSurfaces[2], newSurfaces[3])
 
     updateSurfacesList()
@@ -696,13 +732,9 @@ function main(inputSurfaces)
       {
         for (var j = 0; j < surfacesCopy[k].points[i].length; j++)
         {
-
-          surfacesCopy[k].points[i][j].x -= .5
-          surfacesCopy[k].points[i][j].x *= factor
-          surfacesCopy[k].points[i][j].x += .5
-          surfacesCopy[k].points[i][j].y -= .5
-          surfacesCopy[k].points[i][j].y *= factor
-          surfacesCopy[k].points[i][j].y += .5
+          surfacesCopy[k].points[i][j] = addScalar(surfacesCopy[k].points[i][j], -.5)
+          surfacesCopy[k].points[i][j] = mul(surfacesCopy[k].points[i][j], .5)
+          surfacesCopy[k].points[i][j] = addScalar(surfacesCopy[k].points[i][j], .5)
         }
       }
     }
