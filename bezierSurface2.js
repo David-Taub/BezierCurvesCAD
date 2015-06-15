@@ -200,6 +200,22 @@ function main(inputSurfaces)
     {
       pushToHistory()
       surfaces = JSON.parse(reader.result)
+      //Support Z less JSON format (old)
+      for(k = 0; k < surfaces.length; k++)
+      {
+        for(i = 0; i < surfaces[k].points.length; i++)
+        {
+          for(j = 0; j < surfaces[k].points[i].length; j++)
+          {
+            if (!("z" in surfaces[k].points[i][j]))
+            {
+              surfaces[k].points[i][j].z = 0.0
+              shouldDrawDepth = false
+              shouldDrawJacobian = true
+            }
+          }
+        }
+      }
       redraw()
     }
 
