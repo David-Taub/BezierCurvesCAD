@@ -1,7 +1,6 @@
 $( document ).ready(function()
 {
-  var defaultSurfaces = [{"name":"1","points":[[{"x":0.14900511379241937,"y":0.20165,"z":1},{"x":0.5810051137924194,"y":0.35645000000000004,"z":2},{"x":0.9180056819915772,"y":0.1552272720336914,"z":5}],[{"x":0.4676051137924194,"y":0.5058499999999999,"z":0.1},{"x":0.6098051137924194,"y":0.49145,"z":0.5},{"x":0.7736051137924195,"y":0.49685,"z":-2}],[{"x":0.22400568199157714,"y":0.8532272720336914,"z":0},{"x":0.6116051137924194,"y":0.59225,"z":-3},{"x":0.9920056819915771,"y":0.8152272720336914,"z":0}]]}]
-
+  var defaultSurfaces = [{"name":"1","points":[[{"x":0.14900511379241937,"y":0.20165,"z":1},{"x":0.5810051137924194,"y":0.35645000000000004,"z":1},{"x":0.9180056819915772,"y":0.1552272720336914,"z":1}],[{"x":0.4676051137924194,"y":0.5058499999999999,"z":2},{"x":0.6098051137924194,"y":0.49145,"z":2},{"x":0.7736051137924195,"y":0.49685,"z":2}],[{"x":0.22400568199157714,"y":0.8532272720336914,"z":3},{"x":0.6116051137924194,"y":0.59225,"z":3},{"x":0.9920056819915771,"y":0.8152272720336914,"z":1}]]}]
   main(defaultSurfaces)
 
 })
@@ -9,10 +8,10 @@ $( document ).ready(function()
 function main(inputSurfaces)
 {
   var HISTORY_MAX_SIZE = 50
-  var HIGH_RES_PIX_PER_SAMPLE  = 5
+  var HIGH_RES_PIX_PER_SAMPLE  = 3
   var LOW_RES_PIX_PER_SAMPLE  = 30
-  var TEXTURE_BLACK_ZERO_THRESHOLD = 0.003
-
+  var TEXTURE_BLACK_ZERO_THRESHOLD = 0.002
+  var NUMBER_OF_Z_LEVELS = 10
   var currentlyDrawingTexture = false
   var textureData = []
   var shouldDrawJacobian = false
@@ -554,7 +553,7 @@ function main(inputSurfaces)
   to avoid freezing the canvas with a single and heavy event handler that calculates
   the Jacobian value of all pixel. JS multi-threading might make this even faster.
   */
-  function drawTextureRow(v, pixelsPerSample, movementTime, min, max, func, useThreshold)
+  function drawTextureRow(v, pixelsPerSample, movementTime, min, max, func, blackFunc)
   {
     step = pixelsPerSample / (2 * width)
     if(surfaces.length == 0)
@@ -581,7 +580,7 @@ function main(inputSurfaces)
         Here we set a range that will be colored black.
         This will give visual indication of the area where the Jacobian is "zero"
         */
-        if (useThreshold && (Math.abs(val) < TEXTURE_BLACK_ZERO_THRESHOLD * (max - min)))
+        if (blackFunc(val, max, min))
         {
           color = "rgb(0, 0, 0)"
         }
@@ -612,10 +611,10 @@ function main(inputSurfaces)
         parameterCtx.fillStyle = color
         parameterCtx.fillRect(u * width, height1 * (1 - v), pixelsPerSample, pixelsPerSample)
     }
-    setTimeout(function(){drawTextureRow(v + step, pixelsPerSample, movementTime, min, max, func, useThreshold)})
+    setTimeout(function(){drawTextureRow(v + step, pixelsPerSample, movementTime, min, max, func, blackFunc)})
   }
 
-  function drawTexture(func, useThreshold)
+  function drawTexture(func, blackFunc)
   {
     if(surfaces.length == 0 ||
       !(surfaces[currentSurfaceId].points.length > 1 &&
@@ -628,7 +627,7 @@ function main(inputSurfaces)
     max = minMax[1]
     textureData = []
     currentlyDrawingTexture = true
-    drawTextureRow(0, HIGH_RES_PIX_PER_SAMPLE, lastDrawTimestamp, min, max, func, useThreshold)
+    drawTextureRow(0, HIGH_RES_PIX_PER_SAMPLE, lastDrawTimestamp, min, max, func, blackFunc)
   }
 
   function drawSurfaces()
@@ -822,7 +821,7 @@ function main(inputSurfaces)
     }
     //white background
     parameterCtx.fillStyle="rgba(255, 255, 255, 0.9)"
-    parameterCtx.fillRect(0,1,250,85);
+    parameterCtx.fillRect(0,1,250,70);
     //text
     parameterCtx.fillStyle="rgb(0, 0, 0)"
     parameterCtx.font="bold 15px Courier New"
@@ -832,7 +831,6 @@ function main(inputSurfaces)
     jacVal = getJacobian(surfaces[currentSurfaceId], mouseOnParameter.u, mouseOnParameter.v)
     parameterCtx.fillText("Jacobian: " + jacVal.toFixed(3), 5, 50)
     z = getZ(surfaces[currentSurfaceId], mouseOnParameter.u, mouseOnParameter.v)
-    parameterCtx.fillText("Depth: " + z.toFixed(3), 5, 65)
   }
 
   function redraw()
@@ -851,11 +849,24 @@ function main(inputSurfaces)
     parameterCanvas.height = height
     if (shouldDrawJacobian)
     {
-      drawTexture(getJacobian, true)
+      drawTexture(getJacobian, function (val, max, min)
+      {
+        return Math.abs(val) < TEXTURE_BLACK_ZERO_THRESHOLD * (max - min)
+      })
     }
     else if (shouldDrawDepth)
     {
-      drawTexture(getZ, false)
+      drawTexture(getZ, function (val, max, min)
+      {
+        for (var i = 0; i < NUMBER_OF_Z_LEVELS; i++)
+        {
+          if (Math.abs(val - min - (i * (max - min)/ NUMBER_OF_Z_LEVELS )) < TEXTURE_BLACK_ZERO_THRESHOLD * (max - min))
+          {
+            return true
+          }
+        }
+        return false
+      })
     }
     drawSurfaces()
     physicalMouseCoordinates = drawmouseOnParameter()
