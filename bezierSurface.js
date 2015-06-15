@@ -35,19 +35,6 @@ function main(inputSurfaces)
   function init()
   {
     surfaces = inputSurfaces
-    for(k = 0; k < surfaces.length; k++)
-      {
-        for(i = 0; i < surfaces[k].points.length; i++)
-        {
-          for(j = 0; j < surfaces[k].points[i].length; j++)
-          {
-            if (!("z" in surfaces[k].points[i][j]))
-            {
-              surfaces[k].points[i][j].z = 0.0
-            }
-          }
-        }
-      }
     shouldDrawSkeleton = true
 
     updateSurfacesList()
@@ -388,7 +375,7 @@ function main(inputSurfaces)
       newColumn.push({
         x : surface.points[pointsLength - 1][i].x + diffX,
         y : surface.points[pointsLength - 1][i].y + diffY,
-        lz : 0.0
+        z : 0.0
       })
     }
     surface.points.push(newColumn)
@@ -784,7 +771,7 @@ function main(inputSurfaces)
   {
     var deCasteljauCurveStatus = "Off"
     var jacobianStatus = "Off"
-    var jacobianDepth = "Off"
+    var depthStatus = "Off"
     if (shouldDrawJacobian)
     {
       jacobianStatus = "On"
@@ -872,7 +859,6 @@ function main(inputSurfaces)
     z = surfaces[currentSurfaceId].points[dragId.i][dragId.j].z
     surfaces[currentSurfaceId].points[dragId.i][dragId.j] = getXY(ev, physicalCanvas)
     surfaces[currentSurfaceId].points[dragId.i][dragId.j].z = z
-    console.log(surfaces[currentSurfaceId].points[dragId.i][dragId.j])
     redraw()
     ev.preventDefault
   }
