@@ -1,6 +1,6 @@
 $( document ).ready(function()
 {
-  var defaultSurfaces = [{"name":"1","points":[[{"x":0.14900511379241937,"y":0.20165},{"x":0.5810051137924194,"y":0.35645000000000004},{"x":0.9180056819915772,"y":0.1552272720336914}],[{"x":0.4676051137924194,"y":0.5058499999999999},{"x":0.6098051137924194,"y":0.49145},{"x":0.7736051137924195,"y":0.49685}],[{"x":0.22400568199157714,"y":0.8532272720336914},{"x":0.6116051137924194,"y":0.59225},{"x":0.9920056819915771,"y":0.8152272720336914}]]}]
+  var defaultSurfaces = [{"name":"1","points":[[{"x":0.14900511379241937,"y":0.20165,"z":0},{"x":0.5810051137924194,"y":0.35645000000000004,"z":0},{"x":0.9180056819915772,"y":0.1552272720336914,"z":0}],[{"x":0.4676051137924194,"y":0.5058499999999999,"z":0},{"x":0.6098051137924194,"y":0.49145,"z":0},{"x":0.7736051137924195,"y":0.49685,"z":0}],[{"x":0.22400568199157714,"y":0.8532272720336914,"z":0},{"x":0.6116051137924194,"y":0.59225,"z":0},{"x":0.9920056819915771,"y":0.8152272720336914,"z":0}]]}]
 
   main(defaultSurfaces)
 
@@ -21,7 +21,7 @@ function main(inputSurfaces)
   var history = [], forwardHistory = []
   var timer, deCasteljauCurveRatio = 1
   var surfaces
-  var pointOnSurface = -1
+  var selectedPointOnSurface = -1
   var mouseOnParameterSpace = -1
   var currentSurfaceId = 0
   var physicalCanvas, physicalCtx
@@ -34,6 +34,19 @@ function main(inputSurfaces)
   function init()
   {
     surfaces = inputSurfaces
+    for(k = 0; k < surfaces.length; k++)
+      {
+        for(i = 0; i < surfaces[k].points.length; i++)
+        {
+          for(j = 0; j < surfaces[k].points[i].length; j++)
+          {
+            if (!("z" in surfaces[k].points[i][j]))
+            {
+              surfaces[k].points[i][j].z = 0.0
+            }
+          }
+        }
+      }
     shouldDrawSkeleton = true
 
     updateSurfacesList()
@@ -60,8 +73,9 @@ function main(inputSurfaces)
   function add(point1, point2)
   {
     return {
-      x:point1.x + point2.x,
-      x:point1.y + point2.y,
+      x : point1.x + point2.x,
+      y : point1.y + point2.y,
+      z : point1.z + point2.z,
     }
 
   }
@@ -69,8 +83,9 @@ function main(inputSurfaces)
   function addScalar(point, scalar)
   {
     return {
-      x:point.x + scalar,
-      x:point.y + scalar,
+      x : point.x + scalar,
+      y : point.y + scalar,
+      z : point.z + scalar
     }
 
   }
@@ -79,8 +94,9 @@ function main(inputSurfaces)
   function sub(point1, point2)
   {
     return {
-      x:point1.x - point2.x,
-      x:point1.y - point2.y,
+      x : point1.x - point2.x,
+      y : point1.y - point2.y,
+      z : point1.z - point2.z,
     }
 
   }
@@ -88,9 +104,16 @@ function main(inputSurfaces)
   function mul(point, scalar)
   {
     return {
-      x:point.x * scalar,
-      x:point.y * scalar,
+      x : point.x * scalar,
+      y : point.y * scalar,
+      z : point.z * scalar
     }
+  }
+
+  function pointToString(point)
+  {
+    return "(" + point.x.toFixed(2) + ", " + point.y.toFixed(2) + ", " + point.z.toFixed(2) + ")"
+
   }
 
   function mouseLeave()
@@ -181,7 +204,7 @@ function main(inputSurfaces)
   function changeCurrentSurface()
   {
     currentSurfaceId = $("#surfacesList")[0].selectedIndex
-    pointOnSurface = -1
+    selectedPointOnSurface = -1
     redraw()
   }
 
@@ -207,7 +230,7 @@ function main(inputSurfaces)
   //download current surfaces in JSON format
   function saveSurfaces()
   {
-    download("surfaces.json", JSON.stringify(surfaces))
+    download("surfaces.json", JSON.stringify(surfaces, null, 2))
   }
 
   //Download given text as a file with the given filename
@@ -291,13 +314,13 @@ function main(inputSurfaces)
 
   function subDivideSurfaceByPoint()
   {
-    if (pointOnSurface == -1)
+    if (selectedPointOnSurface == -1)
     {
       return
     }
     pushToHistory()
     surface = surfaces[currentSurfaceId]
-    var newSurfaces = subDivideSurface(surface, pointOnSurface.u, pointOnSurface.v)
+    var newSurfaces = subDivideSurface(surface, selectedPointOnSurface.u, selectedPointOnSurface.v)
     surfaces.splice(currentSurfaceId, 1, newSurfaces[0], newSurfaces[1], newSurfaces[2], newSurfaces[3])
 
     updateSurfacesList()
@@ -334,7 +357,7 @@ function main(inputSurfaces)
     var minimumIndex = -1
     for(var i = 0; i < surface.points[0].length; i++)
     {
-      var distance = calcDistanceSquare(clickPoint, surface.points[pointsLength - 1][i])
+      var distance = calcDistancePhysical(clickPoint, surface.points[pointsLength - 1][i])
       if (distance < minimumDistance)
       {
         minimumDistance = distance
@@ -350,7 +373,8 @@ function main(inputSurfaces)
     {
       newColumn.push({
         x : surface.points[pointsLength - 1][i].x + diffX,
-        y : surface.points[pointsLength - 1][i].y + diffY
+        y : surface.points[pointsLength - 1][i].y + diffY,
+        lz : 0.0
       })
     }
     surface.points.push(newColumn)
@@ -604,15 +628,15 @@ function main(inputSurfaces)
     {
       drawSurface(surfaces[i], i == currentSurfaceId)
     }
-    if (pointOnSurface == -1)
+    if (selectedPointOnSurface == -1)
     {
       return
     }
     //Draw point on surface
-    drawParameterLine(pointOnSurface.x, false, "rgb(255, 0, 255)")
-    drawParameterLine(pointOnSurface.y, true, "rgb(255, 0, 255)")
-    plotCurveOnSurface(surfaces[currentSurfaceId], pointOnSurface.x, true, "rgb(255, 0, 255)");
-    plotCurveOnSurface(surfaces[currentSurfaceId], pointOnSurface.y, false, "rgb(255, 0, 255)");
+    drawParameterLine(selectedPointOnSurface.u, false, "rgb(255, 0, 255)")
+    drawParameterLine(selectedPointOnSurface.v, true, "rgb(255, 0, 255)")
+    plotCurveOnSurface(surfaces[currentSurfaceId], selectedPointOnSurface.u, true, "rgb(255, 0, 255)");
+    plotCurveOnSurface(surfaces[currentSurfaceId], selectedPointOnSurface.v, false, "rgb(255, 0, 255)");
   }
 
   function drawSurfaceControls(surface, lineColor, dotColor, isCurrent)
@@ -779,14 +803,14 @@ function main(inputSurfaces)
     }
     //white background
     parameterCtx.fillStyle="rgba(255, 255, 255, 0.9)"
-    parameterCtx.fillRect(0,1,200,70);
+    parameterCtx.fillRect(0,1,250,70);
     //text
     parameterCtx.fillStyle="rgb(0, 0, 0)"
     parameterCtx.font="bold 15px Courier New"
-    parameterCtx.fillText("Param: (" + mouseOnParameterSpace.x.toFixed(2) + ", " + mouseOnParameterSpace.y.toFixed(2) +")", 5, 20)
-    parameterCtx.fillText("Physi: (" + physicalMouseCoordinates.x.toFixed(2) + ", " + physicalMouseCoordinates.y.toFixed(2) +")", 5, 35)
+    parameterCtx.fillText("Param: (" + mouseOnParameterSpace.u.toFixed(2) + ", " + mouseOnParameterSpace.v.toFixed(2) +")", 5, 20)
+    parameterCtx.fillText("Physi: " + pointToString(physicalMouseCoordinates), 5, 35)
 
-    jacVal = getJacobian(surfaces[currentSurfaceId], mouseOnParameterSpace.x, mouseOnParameterSpace.y)
+    jacVal = getJacobian(surfaces[currentSurfaceId], mouseOnParameterSpace.u, mouseOnParameterSpace.v)
     parameterCtx.fillText("Jacobian: " + jacVal.toFixed(3), 5, 50)
   }
 
@@ -825,7 +849,7 @@ function main(inputSurfaces)
     redraw()
     ev.preventDefault
   }
-  function calcDistanceSquare(a, b)
+  function calcDistancePhysical(a, b)
   {
     return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)
   }
@@ -851,7 +875,7 @@ function main(inputSurfaces)
     {
       for (var j = 0; j < surfaces[currentSurfaceId].points[0].length; j++)
       {
-        distanceSquare = calcDistanceSquare(clickCoordinates, surfaces[currentSurfaceId].points[i][j]);
+        distanceSquare = calcDistancePhysical(clickCoordinates, surfaces[currentSurfaceId].points[i][j]);
         if ( distanceSquare < minimumDistance )
         {
           dragId = {
@@ -875,7 +899,7 @@ function main(inputSurfaces)
 
   function mouseUpParameter(ev)
   {
-    pointOnSurface = getXY(ev, parameterCanvas)
+    selectedPointOnSurface = getXY(ev, parameterCanvas)
     redraw()
   }
 
@@ -892,7 +916,7 @@ function main(inputSurfaces)
       return
     }
     redrawJacobianData()
-    writeStatusParameter(tensor(surfaces[currentSurfaceId], mouseOnParameterSpace.x, mouseOnParameterSpace.y).pop()[0][0])
+    writeStatusParameter(tensor(surfaces[currentSurfaceId], mouseOnParameterSpace.u, mouseOnParameterSpace.v).pop()[0][0])
   }
 
 
@@ -950,22 +974,22 @@ function main(inputSurfaces)
     }
 
     //lines over mouse position, parameter space
-    drawParameterLine(mouseOnParameterSpace.x, false, "rgb(0, 255, 0)")
-    drawParameterLine(mouseOnParameterSpace.y, true, "rgb(0, 255, 0)")
+    drawParameterLine(mouseOnParameterSpace.u, false, "rgb(0, 255, 0)")
+    drawParameterLine(mouseOnParameterSpace.v, true, "rgb(0, 255, 0)")
 
     if (shouldDrawSkeleton)
     {
       physicalMouseCoordinates = drawSkeleton(surfaces[currentSurfaceId],
-                                              mouseOnParameterSpace.x,
-                                              mouseOnParameterSpace.y)
+                                              mouseOnParameterSpace.u,
+                                              mouseOnParameterSpace.v)
     }
     else
     {
       //Draw curves
-      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnParameterSpace.x, true, "rgb(0, 255, 0)");
-      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnParameterSpace.y, false, "rgb(0, 255, 0)");
+      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnParameterSpace.u, true, "rgb(0, 255, 0)");
+      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnParameterSpace.v, false, "rgb(0, 255, 0)");
       //Draw dot
-      physicalMouseCoordinates = tensor(surfaces[currentSurfaceId], mouseOnParameterSpace.x, mouseOnParameterSpace.y).pop()[0][0]
+      physicalMouseCoordinates = tensor(surfaces[currentSurfaceId], mouseOnParameterSpace.u, mouseOnParameterSpace.v).pop()[0][0]
       drawPolygon([physicalMouseCoordinates], plotWidth, "rgb(0, 0, 0)", "rgb(0, 0, 0)", false, -1)
     }
     return physicalMouseCoordinates
@@ -979,6 +1003,13 @@ function main(inputSurfaces)
       ev = ev.touches[0]
     }
     var rect = canvas.getBoundingClientRect()
+    if (canvas == parameterCanvas)
+    {
+      return {
+        u : (ev.clientX - rect.left) / width,
+        v : (height1 - (ev.clientY - rect.top)) / height
+      }
+    }
     return {
       x : (ev.clientX - rect.left) / width,
       y : (height1 - (ev.clientY - rect.top)) / height
@@ -1052,10 +1083,7 @@ function main(inputSurfaces)
       //Skeleton points in current iteration
       for (var i = 0; i < points.length - j; i++)
       {
-        skeletonPoints[j][i] = {
-          x : (1 - t) * skeletonPoints[j-1][i].x + t * skeletonPoints[j-1][i + 1].x,
-          y : (1 - t) * skeletonPoints[j-1][i].y + t * skeletonPoints[j-1][i + 1].y
-        }
+        skeletonPoints[j][i] = add(mul(skeletonPoints[j-1][i], (1 - t)), mul(skeletonPoints[j-1][i + 1], t))
       }
     }
     return skeletonPoints
@@ -1084,16 +1112,13 @@ function main(inputSurfaces)
         nextStepSkeletonRow = []
         for (var j = 0; j < skeletonPoints[k][0].length - 1; j++)
         {
-          nextStepSkeletonRow.push({
-            x : skeletonPoints[k][i][j].x * (1 - u) * (1 - v)+
-                skeletonPoints[k][i + 1][j].x * v * (1 - u) +
-                skeletonPoints[k][i][j + 1].x * (1 - v) * u +
-                skeletonPoints[k][i + 1][j + 1].x * v * u,
-            y : skeletonPoints[k][i][j].y * (1 - u) * (1 - v)+
-                skeletonPoints[k][i + 1][j].y * v * (1 - u) +
-                skeletonPoints[k][i][j + 1].y * (1 - v) * u +
-                skeletonPoints[k][i + 1][j + 1].y * v * u
-          })
+          nextStepSkeletonRow.push(
+            add(add(  mul(skeletonPoints[k][i][j], (1 - u) * (1 - v)),
+                      mul(skeletonPoints[k][i + 1][j], v * (1 - u))),
+                add(  mul(skeletonPoints[k][i][j + 1], (1 - v) * u),
+                      mul(skeletonPoints[k][i + 1][j + 1], v * u))
+                )
+            )
         }
         nextStepSkeleton.push(nextStepSkeletonRow)
       }
@@ -1227,12 +1252,12 @@ function main(inputSurfaces)
     |  u |  1-u  |
     00 -------- 01
     */
-    dxdu = ((1 - v) * (p00.x - p01.x) + v * (p10.x - p11.x)) * surface.points.length
-    dydu = ((1 - v) * (p00.y - p01.y) + v * (p10.y - p11.y)) * surface.points.length
-    dxdv = ((1 - u) * (p00.x - p10.x) + u * (p01.x - p11.x)) * surface.points[0].length
-    dydv = ((1 - u) * (p00.y - p10.y) + u * (p01.y - p11.y)) * surface.points[0].length
+    dfdu = add(mul(sub(p00, p01), (1 - v) * surface.points.length),
+               mul(sub(p10, p11), v * surface.points.length))
+    dfdv = add(mul(sub(p00, p10), (1 - u) * surface.points[0].length),
+               mul(sub(p01, p11), u * surface.points[0].length))
 
-    jacobianDeterminant = (dxdu * dydv) - (dydu * dxdv)
+    jacobianDeterminant = (dfdu.x * dfdv.y) - (dfdu.y * dfdv.x)
     /*
     Note:
     We trim the float precision to avoid noise caused by the imprecise nature of
