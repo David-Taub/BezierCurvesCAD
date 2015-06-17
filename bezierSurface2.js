@@ -1,7 +1,6 @@
 $( document ).ready(function()
 {
   var defaultSurfaces = [{"name":"1","points":[[{"x":0.14900511379241937,"y":0.20165,"z":1},{"x":0.5810051137924194,"y":0.35645000000000004,"z":1},{"x":0.9180056819915772,"y":0.1552272720336914,"z":1}],[{"x":0.4676051137924194,"y":0.5058499999999999,"z":2},{"x":0.6098051137924194,"y":0.49145,"z":2},{"x":0.7736051137924195,"y":0.49685,"z":2}],[{"x":0.22400568199157714,"y":0.8532272720336914,"z":3},{"x":0.6116051137924194,"y":0.59225,"z":3},{"x":0.9920056819915771,"y":0.8152272720336914,"z":1}]]}]
-
   main(defaultSurfaces)
 
 })
@@ -57,10 +56,13 @@ function main(inputSurfaces)
     $("#radio10").prop("checked", true)
     pushToHistory()
   }
+
+
   function getZ(surface, u, v)
   {
     return tensor(surface, u, v).pop()[0][0].z
   }
+
   function add(point1, point2)
   {
     return {
@@ -68,7 +70,9 @@ function main(inputSurfaces)
       y : point1.y + point2.y,
       z : point1.z + point2.z,
     }
+
   }
+
   function addScalar(point, scalar)
   {
     return {
@@ -76,15 +80,15 @@ function main(inputSurfaces)
       y : point.y + scalar,
       z : point.z + scalar
     }
+
   }
+
+
   function sub(point1, point2)
   {
-    return {
-      x : point1.x - point2.x,
-      y : point1.y - point2.y,
-      z : point1.z - point2.z,
-    }
+    return add(point1, mul(point2, -1))
   }
+
   function mul(point, scalar)
   {
     return {
@@ -93,10 +97,12 @@ function main(inputSurfaces)
       z : point.z * scalar
     }
   }
+
   function pointToString(point)
   {
     return "(" + point.x.toFixed(2) + ", " + point.y.toFixed(2) + ", " + point.z.toFixed(2) + ")"
   }
+
   function mouseLeave()
   {
     mouseOnParameter = -1
@@ -443,7 +449,7 @@ function main(inputSurfaces)
       }
       return
     }
-      textureData.push([])
+    textureData.push([])
     for (var u = 0; u < 1; u += step)
     {
       point = tensor(surfaces[currentSurfaceId], u, v).pop()[0][0]
@@ -454,13 +460,13 @@ function main(inputSurfaces)
       Here we set a range that will be colored black.
       This will give visual indication of the area where the Jacobian is "zero"
       */
-        if (blackFunc(val, max, min))
+      if (blackFunc(val, max, min))
       {
         color = "rgb(0, 0, 0)"
       }
       else
       {
-          shade = (val - min) / (max - min)
+        shade = (val - min) / (max - min)
         /*
         Note:
         To determine an approximation of the Jacobian values range, we sampled the surface
@@ -479,8 +485,8 @@ function main(inputSurfaces)
         }
         color = shadeToColor(shade)
       }
-        textureData[textureData.length - 1].push(color)
-        physicalCtx.fillStyle = color
+      textureData[textureData.length - 1].push(color)
+      physicalCtx.fillStyle = color
       physicalCtx.fillRect(point.x * width, height1 * (1 - point.y), pixelsPerSample * zoomDepth, pixelsPerSample * zoomDepth)
       parameterCtx.fillStyle = color
       parameterCtx.fillRect(u * width, height1 * (1 - v), pixelsPerSample, pixelsPerSample)
@@ -497,8 +503,8 @@ function main(inputSurfaces)
       return
     }
     minMax = findMinMax(LOW_RES_PIX_PER_SAMPLE.toFixed(2) / width, func)
-      min = minMax[0]
-      max = minMax[1]
+    min = minMax[0]
+    max = minMax[1]
     textureData = []
     currentlyDrawingTexture = true
     drawTextureRow(0, HIGH_RES_PIX_PER_SAMPLE, lastDrawTimestamp, min, max, func, blackFunc)
@@ -627,6 +633,24 @@ function main(inputSurfaces)
     return newSurface
   }
 
+  function getAveragePoint()
+  {
+    amount = 0
+    sumPoint = {x : 0.0, y: 0.0, z:0.0}
+    for (var k = 0; k < surfaces.length; k++)
+    {
+      for (var i = 0; i < surfaces[k].points.length; i++)
+      {
+        for (var j = 0; j < surfaces[k].points[i].length; j++)
+        {
+          sumPoint = add(sumPoint, surfaces[k].points[i][j])
+          amount += 1
+        }
+      }
+    }
+    return mul(sumPoint, 1.0/amount)
+  }
+
   function zoom(zoomIn)
   {
     var surfacesCopy = $.extend(true, [], surfaces)
@@ -636,15 +660,17 @@ function main(inputSurfaces)
       factor = 1.1
     }
     zoomDepth *= factor
+    averagePoint = mul(getAveragePoint(), factor)
+    diff = sub(averagePoint, {x: 0.5, y:0.5, z:0.5})
+
     for (var k = 0; k < surfacesCopy.length; k++)
     {
       for (var i = 0; i < surfacesCopy[k].points.length; i++)
       {
         for (var j = 0; j < surfacesCopy[k].points[i].length; j++)
         {
-          surfacesCopy[k].points[i][j] = addScalar(surfacesCopy[k].points[i][j], -.5)
-          surfacesCopy[k].points[i][j] = mul(surfacesCopy[k].points[i][j], .5)
-          surfacesCopy[k].points[i][j] = addScalar(surfacesCopy[k].points[i][j], .5)
+          surfacesCopy[k].points[i][j] = mul(surfacesCopy[k].points[i][j], factor)
+          surfacesCopy[k].points[i][j] = sub(surfacesCopy[k].points[i][j], diff)
         }
       }
     }
@@ -769,6 +795,7 @@ function main(inputSurfaces)
     redraw()
     ev.preventDefault
   }
+
   function calcDistancePhysical(a, b)
   {
     return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)
