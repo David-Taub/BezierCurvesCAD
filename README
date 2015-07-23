@@ -1,0 +1,24 @@
+General notes:
+This project interactively presents Bezier curves and surfaces in a web bowser.
+The code was written in JS so it will be presentation oriented and easily portable. No real preparation is needed for it to run, except a HTML5 supporting web browser. This project can be downloaded and presented offline, with the exception of the Tex equations, which won't be presented. I am positive you can make MathJax work offline easily, and thus make the project totally offline.
+
+Code:
+Each JS file has its mathematical part at the end of it, which is responsible for the calculations. The most important functions in the code are the implementations of DeCasteljau algorithm of Bezier curve and surfaces. Notice there are probably better ways to implement the rest of the code (IO, canvas plotting, GUI), since efficiency was not in the goals of this project, and I am not a JS expert.
+
+The main mathematical functions are:
+
+deCasteljauCurve(points, t) - generates the De-Casteljau skeleton of curve at value t.
+
+deCasteljauSurface(surface, u, v) - generates the De-Casteljau skeleton of surface at (u,v) on the surface.
+
+getJacobian(surface, u, v) - calculates the determinant of the Jacobian matrix at (u,v) on the surface
+
+subDivideSurface(surface, u, v) - divide the surface into 4 surfaces, which meet at (u,v) on the original surface.
+
+subDivideCurve(curve, t) - divide the curve into 2 curves, which meet at t on the original curve.
+
+The curves and surfaces are held in a global list and are presented on the canvases on the redraw function. The redraw is called after most input events and mostly runs synchronously. The only part which runs on the background after a redraw is the texture rendering, which is split and done row-wise (JS is a single thread with a task queue framework). The calculation of the Z value and Jacobian is done in each row pixel by pixel and might perform badly on slow computers.
+
+
+David Ariel,
+Hebrew University of Jerusalem
