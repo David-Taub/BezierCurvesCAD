@@ -5,6 +5,7 @@ The code is written in JS making it more presentable (e.g. in a class) and porta
 preparation is needed for it to run, except a HTML5 supporting web browser.
 
 Code:
+
 Each JS file has its mathematical part at the end of it, which is responsible for the
 calculations. The most important functions in the code are the implementations of
 DeCasteljau algorithm of Bezier curve and surfaces. Notice there are probably better ways to
@@ -26,6 +27,7 @@ the original surface.
 
 subDivideCurve(curve, t) - divide the curve into 2 curves, which meet at t on the original
 curve.
+
 
 The curves and surfaces are held in a global list and are presented on the canvases on the
 redraw function. The redraw is called after most input events and mostly runs synchronously.

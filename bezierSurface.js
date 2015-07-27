@@ -266,12 +266,14 @@ function main(inputSurfaces)
       //+
       case 187:
       case 107:
+      case 61:
         zoom(true)
         redraw()
         break
       //-
       case 189:
       case 109:
+      case 173:
         zoom(false)
         redraw()
         break
