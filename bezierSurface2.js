@@ -378,11 +378,11 @@ function main(inputSurfaces)
   {
     physicalCtx.lineWidth = lineWidth
     physicalCtx.beginPath()
-    zoomedPoint = zoomPoint(polygonPoints[0])
+    zoomedPoint = zoomPoint(true, polygonPoints[0])
     physicalCtx.moveTo(zoomedPoint.x * width, height1 * (1 - zoomedPoint.y))
     for (var i = 0; i < polygonPoints.length; i++)
     {
-      zoomedPoint = zoomPoint(polygonPoints[i])
+      zoomedPoint = zoomPoint(true, polygonPoints[i])
       //Dot
       physicalCtx.strokeStyle = dotColor
       physicalCtx.strokeRect(zoomedPoint.x * width - plotWidth,
@@ -458,7 +458,7 @@ function main(inputSurfaces)
     for (var u = 0; u < 1; u += step)
     {
       point = deCasteljauSurface(surfaces[currentSurfaceId], u, v).pop()[0][0]
-      point = zoomPoint(point)
+      point = zoomPoint(true, point)
       val = func(surfaces[currentSurfaceId], u, v)
 
       /*
@@ -607,7 +607,7 @@ function main(inputSurfaces)
     {
       lastStep = deCasteljauSurface(surface, 0, value).pop()[0][0]
     }
-    lastStep = zoomPoint(lastStep)
+    lastStep = zoomPoint(true, lastStep)
     //Draw Curve step
     for (var t = 0; t < 1; t += step)
     {
@@ -619,7 +619,7 @@ function main(inputSurfaces)
       {
         curveStep = deCasteljauSurface(surface, t, value).pop()[0][0]
       }
-      curveStep = zoomPoint(curveStep)
+      curveStep = zoomPoint(true, curveStep)
       physicalCtx.strokeStyle = curveColor
       physicalCtx.beginPath()
       physicalCtx.moveTo(lastStep.x * width, height1 * (1 - lastStep.y))
@@ -669,15 +669,22 @@ function main(inputSurfaces)
     zoomDepth *= factor
   }
 
-  function zoomPoint(point)
+  function zoomPoint(zoomIn, point)
   {
     pointCopy = $.extend(true, {}, point)
     //center of screen, the camera is static
     diff = sub(averagePoint, {x: 0.5, y:0.5, z:0.5})
     //strech
-    pointCopy = mul(pointCopy, zoomDepth)
-    //shift
-    pointCopy = sub(pointCopy, diff)
+    if (zoomIn)
+    {
+      pointCopy = mul(pointCopy, zoomDepth)
+      pointCopy = sub(pointCopy, diff)
+    }
+    else
+    {
+      pointCopy = mul(pointCopy, 1.0 / zoomDepth)
+      pointCopy = add(pointCopy, diff)
+    }
     return pointCopy
   }
 
@@ -793,12 +800,16 @@ function main(inputSurfaces)
       return
     }
     //No point is chosen
-    if (dragId == -1) return
+    if (dragId == -1)
+    {
+      return
+    }
+
     z = surfaces[currentSurfaceId].points[dragId.i][dragId.j].z
     surfaces[currentSurfaceId].points[dragId.i][dragId.j] = getXY(ev, physicalCanvas)
     surfaces[currentSurfaceId].points[dragId.i][dragId.j].z = z
     redraw()
-    ev.preventDefault
+    ev.preventDefault()
   }
 
   function calcDistancePhysical(a, b)
@@ -970,10 +981,12 @@ function main(inputSurfaces)
         v : (height1 - (ev.clientY - rect.top)) / height
       }
     }
-    return {
+    point = {
       x : (ev.clientX - rect.left) / width,
-      y : (height1 - (ev.clientY - rect.top)) / height
+      y : (height1 - (ev.clientY - rect.top)) / height,
+      z : 0.0
     }
+    return zoomPoint(false, point)
   }
 
   // takes value between 0 to 1 and returns an rgb which
