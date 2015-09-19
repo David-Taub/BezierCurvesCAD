@@ -1,5 +1,5 @@
-var defaultSurfaces = [{"name":"1", "points":[[{"x":0.2,"y":0.1,"z":1},{"x":0.6,"y":0.2,"z":2}],[{"x":0.1,"y":0.7,"z":1},{"x":0.6,"y":0.6,"z":1}]]},
-                       {"name":"2", "points":[[{"x":0.3,"y":0.2,"z":1},{"x":0.9,"y":0.2,"z":2}],[{"x":0.60,"y":0.8,"z":2},{"x":0.9,"y":0.8,"z":2}]]}]
+var defaultSurfaces = [{"name":"1", "points":[[{"x":0.2,"y":0.1,"z":1},{"x":0.6,"y":0.2,"z":2}],[{"x":0.1,"y":0.7,"z":3},{"x":0.6,"y":0.6,"z":1}]]},
+                       {"name":"2", "points":[[{"x":0.3,"y":0.2,"z":3},{"x":0.9,"y":0.2,"z":2}],[{"x":0.60,"y":0.8,"z":0},{"x":0.9,"y":0.8,"z":1}]]}]
 var rowsAmount = 5
 var columnsAmount = [5, 5]
 $( document ).ready(function()
@@ -11,13 +11,14 @@ $( document ).ready(function()
 
 function main(inputSurfaces)
 {
+  var NUMBER_OF_SURFACES = 2
   var HISTORY_MAX_SIZE = 50
   var HIGH_RES_PIX_PER_SAMPLE  = 3
   var LOW_RES_PIX_PER_SAMPLE  = 30
   var TEXTURE_BLACK_ZERO_THRESHOLD = 0.002
   var NUMBER_OF_Z_LEVELS = 10
   var currentlyDrawingTexture = false
-  var textureData = []
+  var textureData = [[], []]
   var shouldDrawJacobian = false
   var shouldDrawDepth = false
   var lastDrawTimestamp = (new Date).getTime()
@@ -409,21 +410,25 @@ function main(inputSurfaces)
   {
     min = Number.POSITIVE_INFINITY
     max = Number.NEGATIVE_INFINITY
-    for (var u = 0; u < 1; u += step)
+    for (var k = 0; k < NUMBER_OF_SURFACES; k++)
     {
-      for (var v = 0; v < 1; v += step)
+      for (var u = 0; u < 1; u += step)
       {
-        val = func(surfaces[currentSurfaceId], u, v)
-        if (val < min)
+        for (var v = 0; v < 1; v += step)
         {
-          min = val
-        }
-        if (val > max)
-        {
-          max = val
+          val = func(surfaces[k], u, v)
+          if (val < min)
+          {
+            min = val
+          }
+          if (val > max)
+          {
+            max = val
+          }
         }
       }
     }
+    
     /*
     Note (see note at getJacobian):
     We add epsilons here to avoid the black screen which is caused by a too narrow
@@ -454,49 +459,58 @@ function main(inputSurfaces)
       }
       return
     }
-    textureData.push([])
-    for (var u = 0; u < 1; u += step)
-    {
-      point = deCasteljauSurface(surfaces[currentSurfaceId], u, v).pop()[0][0]
-      point = zoomPoint(true, point)
-      val = func(surfaces[currentSurfaceId], u, v)
 
-      /*
-      Note:
-      Here we set a range that will be colored black.
-      This will give visual indication of the area where the Jacobian is "zero"
-      */
-      if (blackFunc(val, max, min))
+    for (var k =0; k < NUMBER_OF_SURFACES; k++)
+    {
+      textureData[k].push([])
+      for (var u = 0; u < 1; u += step)
       {
-        color = "rgb(0, 0, 0)"
-      }
-      else
-      {
-        shade = (val - min) / (max - min)
+        point = deCasteljauSurface(surfaces[k], u, v).pop()[0][0]
+        point = zoomPoint(true, point)
+        val = func(surfaces[k], u, v)
+
         /*
         Note:
-        To determine an approximation of the Jacobian values range, we sampled the surface
-        before drawing the values in higher resolution. Values that are drawn in between the
-        samples might exceed the max\min that was sampled, so we round these exceeding values
-        to fit in the approximated range. If the sampling resolution constant is high enough
-        and the surface is not to extreme in its values, it shouldn't be visible.
+        Here we set a range that will be colored black.
+        This will give visual indication of the area where the Jacobian is "zero"
         */
-        if (shade > 1)
+        if (blackFunc(val, max, min))
         {
-          shade = 1
+          color = "rgb(0, 0, 0)"
         }
-        if ( shade < 0)
+        else
         {
-          shade = 0
+          shade = (val - min) / (max - min)
+          /*
+          Note:
+          To determine an approximation of the Jacobian values range, we sampled the surface
+          before drawing the values in higher resolution. Values that are drawn in between the
+          samples might exceed the max\min that was sampled, so we round these exceeding values
+          to fit in the approximated range. If the sampling resolution constant is high enough
+          and the surface is not to extreme in its values, it shouldn't be visible.
+          */
+          if (shade > 1)
+          {
+            shade = 1
+          }
+          if ( shade < 0)
+          {
+            shade = 0
+          }
+          color = shadeToColor(shade)
         }
-        color = shadeToColor(shade)
+        textureData[k][textureData[k].length - 1].push(color)
+        physicalCtx.fillStyle = color
+        physicalCtx.fillRect(point.x * width, height1 * (1 - point.y), pixelsPerSample * zoomDepth, pixelsPerSample * zoomDepth)
+        //Draw only current surface texture on parameter canvas
+        if (k == currentSurfaceId)
+        {
+          parameterCtx.fillStyle = color
+          parameterCtx.fillRect(u * width, height1 * (1 - v), pixelsPerSample, pixelsPerSample)
+        }
       }
-      textureData[textureData.length - 1].push(color)
-      physicalCtx.fillStyle = color
-      physicalCtx.fillRect(point.x * width, height1 * (1 - point.y), pixelsPerSample * zoomDepth, pixelsPerSample * zoomDepth)
-      parameterCtx.fillStyle = color
-      parameterCtx.fillRect(u * width, height1 * (1 - v), pixelsPerSample, pixelsPerSample)
     }
+    
     setTimeout(function(){drawTextureRow(v + step, pixelsPerSample, movementTime, min, max, func, blackFunc)})
   }
 
@@ -511,7 +525,7 @@ function main(inputSurfaces)
     minMax = findMinMax(LOW_RES_PIX_PER_SAMPLE.toFixed(2) / width, func)
     min = minMax[0]
     max = minMax[1]
-    textureData = []
+    textureData[currentSurfaceId] = []
     currentlyDrawingTexture = true
     drawTextureRow(0, HIGH_RES_PIX_PER_SAMPLE, lastDrawTimestamp, min, max, func, blackFunc)
   }
@@ -744,9 +758,9 @@ function main(inputSurfaces)
     z = getZ(surfaces[currentSurfaceId], mouseOnParameter.u, mouseOnParameter.v)
   }
 
-  function makeSurfacesPlaner4()
+  function makeSurfacesPlanar4()
   {
-    if (surfaces.length != 2)
+    if (surfaces.length != NUMBER_OF_SURFACES)
     {
       surfaces = defaultSurfaces
     }
@@ -758,7 +772,7 @@ function main(inputSurfaces)
   {
     averagePoint = getAveragePoint()
     lastDrawTimestamp = (new Date).getTime()
-    makeSurfacesPlaner4()
+    makeSurfacesPlanar4()
     physicalCtx.clearRect(0,0, width, height)
     parameterCtx.clearRect(0,0, width, height)
     height = physicalCtx.canvas.height
@@ -897,7 +911,10 @@ function main(inputSurfaces)
     writeStatusParameter(deCasteljauSurface(surfaces[currentSurfaceId], mouseOnParameter.u, mouseOnParameter.v).pop()[0][0])
   }
 
-
+  /*
+  Redraw the texture on the parameter space from the cache. The cache contains the last
+  texture calculated in drawTextureRow function
+  */
   function redrawTextureData()
   {
 
@@ -905,11 +922,11 @@ function main(inputSurfaces)
     {
       return
     }
-    for (var row = 0; row < textureData.length; row++)
+    for (var row = 0; row < textureData[currentSurfaceId].length; row++)
     {
-      for (var column = 0; column < textureData[0].length; column++)
+      for (var column = 0; column < textureData[currentSurfaceId][0].length; column++)
       {
-        parameterCtx.fillStyle = textureData[row][column]
+        parameterCtx.fillStyle = textureData[currentSurfaceId][row][column]
         parameterCtx.fillRect(column * HIGH_RES_PIX_PER_SAMPLE / 2 , height1 - row * HIGH_RES_PIX_PER_SAMPLE / 2, HIGH_RES_PIX_PER_SAMPLE, HIGH_RES_PIX_PER_SAMPLE)
       }
     }
@@ -1072,7 +1089,7 @@ function main(inputSurfaces)
   function makeSurfacesLinear()
   {
 
-    for (var k = 0; k < 2; k++)
+    for (var k = 0; k < NUMBER_OF_SURFACES; k++)
     {
       points = []
       for (var i = 0; i < rowsAmount; i++)
