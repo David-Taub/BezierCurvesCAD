@@ -273,10 +273,6 @@ function main(inputSurfaces)
         zoom(false)
         redraw()
         break
-      //S
-      case 83:
-        subDivideSurfaceByPoint()
-        break
       //Z
       case 90:
         if (ev.ctrlKey)
