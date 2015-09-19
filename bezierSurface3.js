@@ -1,5 +1,5 @@
-var defaultSurfaces = [{"name":"1", "points":[[{"x":0.1,"y":0.7,"z":1},{"x":0.6,"y":0.6,"z":1}],[{"x":0.2,"y":0.1,"z":1},{"x":0.6,"y":0.2,"z":2}]]},
-                       {"name":"2", "points":[[{"x":0.60,"y":0.8,"z":2},{"x":0.9,"y":0.8,"z":2}],[{"x":0.3,"y":0.2,"z":1},{"x":0.9,"y":0.2,"z":2}]]}]
+var defaultSurfaces = [{"name":"1", "points":[[{"x":0.2,"y":0.1,"z":1},{"x":0.6,"y":0.2,"z":2}],[{"x":0.1,"y":0.7,"z":1},{"x":0.6,"y":0.6,"z":1}]]},
+                       {"name":"2", "points":[[{"x":0.3,"y":0.2,"z":1},{"x":0.9,"y":0.2,"z":2}],[{"x":0.60,"y":0.8,"z":2},{"x":0.9,"y":0.8,"z":2}]]}]
 var rowsAmount = 5
 var columnsAmount = [5, 5]
 $( document ).ready(function()
@@ -1043,10 +1043,9 @@ function main(inputSurfaces)
 
 //MATHEMATICAL FUNCTIONS
 
-
-  function makePlanar4()
+  function attachSurfaces()
   {
-    /*
+  /*
     .__________________.   .__________________.
     |                  |   |                  |
     |                  |   |                  |
@@ -1068,6 +1067,11 @@ function main(inputSurfaces)
     */
     surfaces[1].points[0][0] = surfaces[0].points[0].slice(-1)[0]
     surfaces[1].points[surfaces[1].points.length - 1][0] = surfaces[0].points.slice(-1)[0].slice(-1)[0]
+  }
+
+  function makeSurfacesLinear()
+  {
+
     for (var k = 0; k < 2; k++)
     {
       points = []
@@ -1089,6 +1093,12 @@ function main(inputSurfaces)
       }
       surfaces[k].points = points
     }
+  }
+
+  function makePlanar4()
+  {
+    attachSurfaces()
+    makeSurfacesLinear()
   }
 
   //Receive points of control polygon and the t parameter of the Bezier curve function
