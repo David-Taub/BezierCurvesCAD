@@ -4,6 +4,13 @@ created under the guidance of Prof. Michel Bercovier from the Hebrew University 
 The code is written in JS making it more presentable (e.g. in a class) and portable. No real
 preparation is needed for it to run, except a HTML5 supporting web browser.
 
+Surfaces:
+
+The surfaces are presented in two spaces: parameter space and physical space. The physical space doesn't show a 
+projection as usually done in graphical engines, it shows the X,Y coordinates of the (x,y,z) points in space. Two 
+textures can be added on a surface: jacobian, which is the determinant of the jacobian matrix and depth which is the Z 
+value of each point in the surface.
+
 Code:
 
 Each JS file has its mathematical part at the end of it, which is responsible for the
