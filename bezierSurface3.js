@@ -1,5 +1,5 @@
-var defaultSurfaces = [{"name":"1", "points":[[{"x":0.2,"y":0.1,"z":7},{"x":0.6,"y":0.2,"z":1}],[{"x":0.1,"y":0.7,"z":2},{"x":0.6,"y":0.6,"z":4}]]},
-                       {"name":"2", "points":[[{"x":0.3,"y":0.2,"z":0},{"x":0.9,"y":0.2,"z":3}],[{"x":0.60,"y":0.8,"z":5},{"x":0.9,"y":0.8,"z":6}]]}]
+var defaultSurfaces = [{"name":"1", "points":[[{"x":0.2,"y":0.1,"z":0},{"x":0.6,"y":0.2,"z":0}],[{"x":0.1,"y":0.7,"z":0},{"x":0.6,"y":0.6,"z":0}]]},
+                       {"name":"2", "points":[[{"x":0.3,"y":0.2,"z":0},{"x":0.9,"y":0.2,"z":0}],[{"x":0.60,"y":0.8,"z":0},{"x":0.9,"y":0.8,"z":0}]]}]
 var rowsAmount = 5
 var columnsAmount = [5, 5]
 $( document ).ready(function()
@@ -13,14 +13,26 @@ function main(inputSurfaces)
 {
   var NUMBER_OF_SURFACES = 2
   var HISTORY_MAX_SIZE = 50
-  var HIGH_RES_PIX_PER_SAMPLE  = 3
+  var HIGH_RES_PIX_PER_SAMPLE  = 3 //determines the texture resolution
   var LOW_RES_PIX_PER_SAMPLE  = 30
-  var TEXTURE_BLACK_ZERO_THRESHOLD = 0.002
+  var TEXTURE_BLACK_ZERO_THRESHOLD = 0.003 //determines the height lines thinkness 
   var NUMBER_OF_Z_LEVELS = 10
+  var Z_VALUED_VALUE = 1
+  var HEIGHT_LINE_COLOR = "rgb(60, 60, 60)"
+
+  //z valued point default values
+  var zValuedPointSurface = 1
+  var zValuedPointColumn = 0
+  var zValuedPointRow = 1
   var currentlyDrawingTexture = false
+
+  //texture data cache for surfaces (assumed NUMBER_OF_SURFACES = 2)
   var textureData = [[], []]
+
+  //default drawn texture
   var shouldDrawJacobian = false
-  var shouldDrawDepth = false
+  var shouldDrawDepth = true
+
   var lastDrawTimestamp = (new Date).getTime()
   var lastLowResDrawn = 0
   var history = [], forwardHistory = []
@@ -309,8 +321,15 @@ function main(inputSurfaces)
           redo()
         }
         break
+      //n
+      case 78:
+        advanceZValuedPoint()
+        currentSurfaceId = zValuedPointSurface
+        redraw()
+        break
     }
   }
+
 
   function subDivideSurfaceByPoint()
   {
@@ -476,7 +495,7 @@ function main(inputSurfaces)
         */
         if (blackFunc(val, max, min))
         {
-          color = "rgb(0, 0, 0)"
+          color = HEIGHT_LINE_COLOR
         }
         else
         {
@@ -726,7 +745,7 @@ function main(inputSurfaces)
     }
     //White background
     physicalCtx.fillStyle="rgba(255, 255, 255, 0.9)"
-    physicalCtx.fillRect(0,1,200,85);
+    physicalCtx.fillRect(0,1,210,90);
     //text
     physicalCtx.fillStyle="rgb(0, 0, 0)"
     physicalCtx.font="15px Courier New"
@@ -734,6 +753,7 @@ function main(inputSurfaces)
     physicalCtx.fillText("[j] Jacobian: " + jacobianStatus, 5, 35)
     physicalCtx.fillText("[d] Depth: " + depthStatus, 5, 50)
     physicalCtx.fillText("[c] De-Casteljau: " + deCasteljauCurveStatus, 5, 65)
+    physicalCtx.fillText("[n] Next base function", 5, 80)
 
   }
 
@@ -1110,12 +1130,63 @@ function main(inputSurfaces)
       }
       surfaces[k].points = points
     }
+
   }
 
+
+  function advanceZValuedPoint()
+  {
+    zValuedPointColumn++
+    if (columnsAmount[zValuedPointSurface] > zValuedPointColumn)
+    {
+      return
+    }
+    //column overflow
+    zValuedPointColumn = 0
+    zValuedPointSurface++
+    if(zValuedPointSurface < NUMBER_OF_SURFACES)
+    {
+      return
+    }
+    //surface overflow
+    zValuedPointSurface = 0
+    zValuedPointRow++
+    if(zValuedPointRow < rowsAmount)
+    {
+      return
+    }
+    //row overflow
+    zValuedPointRow = 0
+  }
+
+  function setZValues()
+  {
+    //all zero
+    for (var k = 0; k < NUMBER_OF_SURFACES; k++)
+    {
+      for (var i = 0; i < surfaces[k].points.length; i++)
+      {
+        for (var j = 0; j < surfaces[k].points[i].length; j++)
+        {
+          surfaces[k].points[i][j].z = 0
+        }
+      }
+    }
+
+    //set the valued point
+    if (zValuedPointSurface > 0 && zValuedPointColumn == 0)
+    {
+      //shared point
+      otherSurfacePointColumn = surfaces[zValuedPointSurface - 1].points[zValuedPointRow].length - 1
+      surfaces[zValuedPointSurface - 1].points[zValuedPointRow][otherSurfacePointColumn].z = Z_VALUED_VALUE
+    }
+    surfaces[zValuedPointSurface].points[zValuedPointRow][zValuedPointColumn].z = Z_VALUED_VALUE
+  }
   function makePlanar4()
   {
     attachSurfaces()
     makeSurfacesLinear()
+    setZValues();
   }
 
   //Receive points of control polygon and the t parameter of the Bezier curve function
