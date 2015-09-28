@@ -5,11 +5,11 @@ var columnsAmount = [5, 5]
 $( document ).ready(function()
 {
   
-  main(defaultSurfaces)
+  main()
 
 })
 
-function main(inputSurfaces)
+function main()
 {
   var NUMBER_OF_SURFACES = 2
   var HISTORY_MAX_SIZE = 50
@@ -33,6 +33,9 @@ function main(inputSurfaces)
   var shouldDrawJacobian = false
   var shouldDrawDepth = true
 
+  //the file we work on
+  var currentFileName = "surfaces.json"
+
   var lastDrawTimestamp = (new Date).getTime()
   var lastLowResDrawn = 0
   var history = [], forwardHistory = []
@@ -51,7 +54,8 @@ function main(inputSurfaces)
 
   function init()
   {
-    surfaces = inputSurfaces
+    surfaces = defaultSurfaces
+    setZValues()
     shouldDrawSkeleton = true
 
     updateSurfacesList()
@@ -216,9 +220,13 @@ function main(inputSurfaces)
   //Load surfaces from file which is selected in "browse..." element
   function loadSurfaces(ev)
   {
+
     var file = $("#fileInput")[0].files[0]; // FileList object
     var reader = new FileReader()
-
+    currentFileName = file.name
+    $("#fileName").text(file.name)
+    document.title = "(" + file.name + ") Bezier Surface (planar2)"
+    
     // Closure to capture the file information.
     reader.onload = function(e)
     {
@@ -237,6 +245,12 @@ function main(inputSurfaces)
               shouldDrawDepth = false
               shouldDrawJacobian = true
             }
+            if (surfaces[k].points[i][j].z != 0)
+            {
+              zValuedPointSurface = k
+              zValuedPointRow = i
+              zValuedPointColumn = j
+            }
           }
         }
       }
@@ -251,7 +265,7 @@ function main(inputSurfaces)
   //download current surfaces in JSON format
   function saveSurfaces()
   {
-    download("surfaces.json", JSON.stringify(surfaces, null, 2))
+    download(currentFileName, JSON.stringify(surfaces, null, 2))
   }
 
   //Download given text as a file with the given filename
@@ -325,25 +339,10 @@ function main(inputSurfaces)
       case 78:
         advanceZValuedPoint()
         currentSurfaceId = zValuedPointSurface
+        setZValues()
         redraw()
         break
     }
-  }
-
-
-  function subDivideSurfaceByPoint()
-  {
-    if (selectedPointOnParameter == -1)
-    {
-      return
-    }
-    pushToHistory()
-    surface = surfaces[currentSurfaceId]
-    var newSurfaces = subDivideSurface(surface, selectedPointOnParameter.u, selectedPointOnParameter.v)
-    surfaces = [newSurfaces[0]]
-
-    updateSurfacesList()
-    redraw()
   }
 
 
@@ -778,16 +777,6 @@ function main(inputSurfaces)
     z = getZ(surfaces[currentSurfaceId], mouseOnParameter.u, mouseOnParameter.v)
   }
 
-  function makeSurfacesPlanar4()
-  {
-    if (surfaces.length != NUMBER_OF_SURFACES)
-    {
-      surfaces = defaultSurfaces
-    }
-    makePlanar4()
-    updateSurfacesList()
-  }
-
   function redraw()
   {
     averagePoint = getAveragePoint()
@@ -1125,7 +1114,13 @@ function main(inputSurfaces)
                                  mul(surfaces[k].points.slice(-1)[0][0], wieghts[1])),
                              add(mul(surfaces[k].points[0].slice(-1)[0], wieghts[2]), 
                                  mul(surfaces[k].points.slice(-1)[0].slice(-1)[0], wieghts[3])))
-          
+          if (surfaces[k].points.length == rowsAmount &&
+              surfaces[k].points[0].length == columnsAmount[k])
+          {
+            //not generating points for the first time from scratch, as in the default startup surfaces
+            //we want to preserve the Z-value, which should not be linear
+            points[i][j].z = surfaces[k].points[i][j].z
+          }
         }
       }
       surfaces[k].points = points
@@ -1182,11 +1177,20 @@ function main(inputSurfaces)
     }
     surfaces[zValuedPointSurface].points[zValuedPointRow][zValuedPointColumn].z = Z_VALUED_VALUE
   }
-  function makePlanar4()
+
+  function makeSurfacesPlanar4()
   {
+    if (surfaces.length != NUMBER_OF_SURFACES)
+    {
+      alert("found {0} surfaces instead of {1}. Loading default surfaces.".format(
+            surfaces.length, NUMBER_OF_SURFACES))
+      surfaces = defaultSurfaces
+      setZValues()
+      updateSurfacesList()
+    }
     attachSurfaces()
     makeSurfacesLinear()
-    setZValues();
+    //setZValues()
   }
 
   //Receive points of control polygon and the t parameter of the Bezier curve function

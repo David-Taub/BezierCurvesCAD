@@ -9,6 +9,8 @@
 	</head>
 	<body>
 		<h1>Bézier Surface (planar2)</h1>
+
+		<h2 id="fileName"></h2>
 		<canvas id="physicalCanvas" width = 500 height = 500 style="border:1px solid #000000;"></canvas>
 		<canvas id="parameterCanvas" width = 500 height = 500 style="border:1px solid #000000;"></canvas>
 		<table>
@@ -48,15 +50,15 @@
 		}
 		</style>
 		<script type="text/javascript">
-		$(function()
-		{
-			$("#uploadButton").on('click', function(e)
+			$(function()
 			{
-    			e.preventDefault();
-    			$("#fileInput").trigger('click');
+				$("#uploadButton").on('click', function(e)
+				{
+					e.preventDefault();
+					$("#fileInput").trigger('click');
+				});
 			});
-		});
-	</script>
+		</script>
 
 
 		<button id="downloadButton">
@@ -64,20 +66,20 @@
 				Download surface...
 			</h2>
 		</button>
-				<h2>
-				<br/>
-				Click 					- Move points
-				<br/>
-				J 							- Toggle show Jacobian determinant values
-				<br/>
-				C 							- Toggle show De-Casteljau skeleton
-				<br/>
-				CTRL + Z 				- Undo
-				<br/>
-				CTRL + Y 				- Redo
-				<br/>
+		<h2>
+			<br/>
+			Click 					- Move points
+			<br/>
+			J 							- Toggle show Jacobian determinant values
+			<br/>
+			C 							- Toggle show De-Casteljau skeleton
+			<br/>
+			CTRL + Z 				- Undo
+			<br/>
+			CTRL + Y 				- Redo
+			<br/>
 
-			</h2>
+		</h2>
 		<br/>
 		<a href="http://en.wikipedia.org/wiki/B%C3%A9zier_surface">
 			<h2>
