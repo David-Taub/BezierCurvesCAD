@@ -233,6 +233,14 @@ function main()
       //Support Z less JSON format (old)
       for(k = 0; k < surfaces.length; k++)
       {
+        if (!("rows" in surfaces[k]))
+        {
+          surfaces[k].rows = surfaces[k].points.length
+        }
+        if (!("columns" in surfaces[k]))
+        {
+          surfaces[k].columns = surfaces[k].points[0].length
+        }
         for(i = 0; i < surfaces[k].points.length; i++)
         {
           for(j = 0; j < surfaces[k].points[i].length; j++)
