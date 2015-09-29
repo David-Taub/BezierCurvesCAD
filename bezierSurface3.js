@@ -1,7 +1,5 @@
-var defaultSurfaces = [{"name":"1", "points":[[{"x":0.2,"y":0.1,"z":0},{"x":0.6,"y":0.2,"z":0}],[{"x":0.1,"y":0.7,"z":0},{"x":0.6,"y":0.6,"z":0}]]},
-                       {"name":"2", "points":[[{"x":0.3,"y":0.2,"z":0},{"x":0.9,"y":0.2,"z":0}],[{"x":0.60,"y":0.8,"z":0},{"x":0.9,"y":0.8,"z":0}]]}]
-var rowsAmount = 5
-var columnsAmount = [5, 5]
+var defaultSurfaces = [{"name":"1", "rows" : 5, "columns": 5, "points":[[{"x":0.2,"y":0.1,"z":0},{"x":0.6,"y":0.2,"z":0}],[{"x":0.1,"y":0.7,"z":0},{"x":0.6,"y":0.6,"z":0}]]},
+                       {"name":"2", "rows" : 5, "columns": 5, "points":[[{"x":0.3,"y":0.2,"z":0},{"x":0.9,"y":0.2,"z":0}],[{"x":0.60,"y":0.8,"z":0},{"x":0.9,"y":0.8,"z":0}]]}]
 $( document ).ready(function()
 {
   
@@ -1101,21 +1099,21 @@ function main()
     for (var k = 0; k < NUMBER_OF_SURFACES; k++)
     {
       points = []
-      for (var i = 0; i < rowsAmount; i++)
+      for (var i = 0; i < surfaces[k].rows; i++)
       {
         points.push([])
-        for (var j = 0; j < columnsAmount[k]; j++)
+        for (var j = 0; j < surfaces[k].columns; j++)
         {
-          wieghts = [(1 - (i / (rowsAmount - 1))) * (1 - (j / (columnsAmount[k] - 1))),
-                     (i / (rowsAmount - 1)) * (1 - (j / (columnsAmount[k] - 1))),
-                      (1 - (i / (rowsAmount - 1))) * (j / (columnsAmount[k] - 1)),
-                      (i / (rowsAmount - 1)) * (j / (columnsAmount[k] - 1))]
+          wieghts = [(1 - (i / (surfaces[k].rows - 1))) * (1 - (j / (surfaces[k].columns - 1))),
+                     (i / (surfaces[k].rows - 1)) * (1 - (j / (surfaces[k].columns - 1))),
+                      (1 - (i / (surfaces[k].rows - 1))) * (j / (surfaces[k].columns - 1)),
+                      (i / (surfaces[k].rows - 1)) * (j / (surfaces[k].columns - 1))]
           points[i][j] = add(add(mul(surfaces[k].points[0][0], wieghts[0]),
                                  mul(surfaces[k].points.slice(-1)[0][0], wieghts[1])),
                              add(mul(surfaces[k].points[0].slice(-1)[0], wieghts[2]), 
                                  mul(surfaces[k].points.slice(-1)[0].slice(-1)[0], wieghts[3])))
-          if (surfaces[k].points.length == rowsAmount &&
-              surfaces[k].points[0].length == columnsAmount[k])
+          if (surfaces[k].points.length == surfaces[k].rows &&
+              surfaces[k].points[0].length == surfaces[k].columns)
           {
             //not generating points for the first time from scratch, as in the default startup surfaces
             //we want to preserve the Z-value, which should not be linear
@@ -1132,12 +1130,19 @@ function main()
   function advanceZValuedPoint()
   {
     zValuedPointColumn++
-    if (columnsAmount[zValuedPointSurface] > zValuedPointColumn)
+    if (surfaces[zValuedPointSurface].columns > zValuedPointColumn)
     {
       return
     }
     //column overflow
     zValuedPointColumn = 0
+    zValuedPointRow++
+    if(zValuedPointRow < surfaces[zValuedPointSurface].rows)
+    {
+      return
+    }
+    //row overflow
+    zValuedPointRow = 0
     zValuedPointSurface++
     if(zValuedPointSurface < NUMBER_OF_SURFACES)
     {
@@ -1145,13 +1150,6 @@ function main()
     }
     //surface overflow
     zValuedPointSurface = 0
-    zValuedPointRow++
-    if(zValuedPointRow < rowsAmount)
-    {
-      return
-    }
-    //row overflow
-    zValuedPointRow = 0
   }
 
   function setZValues()
