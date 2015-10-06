@@ -16,7 +16,20 @@ function main()
   var TEXTURE_BLACK_ZERO_THRESHOLD = 0.003 //determines the height lines thinkness 
   var NUMBER_OF_Z_LEVELS = 10
   var Z_VALUED_VALUE = 1
-  var HEIGHT_LINE_COLOR = "rgb(60, 60, 60)"
+
+  //colors
+  var HEIGHT_LINE_COLOR               = "rgb(200, 200, 200)"
+  var CURRENT_SURFACE_POINT_COLOR     = "rgb(0, 0, 200)"
+  var CURRENT_SURFACE_LINE_COLOR      = "rgb(0, 0, 230)"
+  var NON_CURRENT_SURFACE_POINT_COLOR = "rgb(200, 200, 200)"
+  var NON_CURRENT_SURFACE_LINE_COLOR  = "rgb(200, 200, 200)"
+  var CURRENT_GRID_CURVE_COLOR        = "rgb(255, 0, 0)"
+  var NON_CURRENT_GRID_CURVE_COLOR    = "rgb(255, 20, 20)"
+  var TEXT_COLOR                      = "rgb(0, 0, 0)"
+  var TEXT_BACKGROUND_COLOR           = "rgba(255, 255, 255, 0.9)"
+  var SELECTED_POINT_COLOR            = "rgb(255, 0, 255)"
+  var SKELETON_POINTS_COLOR           = "rgb(0, 0, 0)"
+  var MOUSE_POSITION_COLOR            = "rgb(0, 255, 0)"
 
   //z valued point default values
   var zValuedPointSurface = 1
@@ -367,14 +380,13 @@ function main()
     }
     linesInGrid = getLinesAmountInGrid() + 1
 
-    //for (var u = 0; u <= 1; u += 1 / (surfaces[currentSurfaceId].points.length - 1))
     for (var u = 0; u <= linesInGrid; u += 1 )
     {
-      drawParameterLine(u / linesInGrid, true, "rgb(255, 0, 0)");
+      drawParameterLine(u / linesInGrid, true, CURRENT_GRID_CURVE_COLOR);
     }
     for (var v = 0; v <= linesInGrid; v += 1)
     {
-      drawParameterLine(v / linesInGrid, false, "rgb(255, 0, 0)");
+      drawParameterLine(v / linesInGrid, false, CURRENT_GRID_CURVE_COLOR);
     }
   }
 
@@ -396,10 +408,10 @@ function main()
     parameterCtx.stroke()
   }
 
-  //Add to canvas lines and dots of given polygon
-  // (polygon is open, last and first dots are not drawn)
+  //Add to canvas lines and points of given polygon
+  // (polygon is open, last and first points are not drawn)
   // used to draw the control polygon and the DeCasteljau skeleton
-  function drawPolygon(polygonPoints, lineWidth, lineColor, dotColor, isCurrent, rowIndex)
+  function drawPolygon(polygonPoints, lineWidth, lineColor, pointColor, isCurrent, rowIndex)
   {
     physicalCtx.lineWidth = lineWidth
     physicalCtx.beginPath()
@@ -408,8 +420,8 @@ function main()
     for (var i = 0; i < polygonPoints.length; i++)
     {
       zoomedPoint = zoomPoint(true, polygonPoints[i])
-      //Dot
-      physicalCtx.strokeStyle = dotColor
+      //Point
+      physicalCtx.strokeStyle = pointColor
       physicalCtx.strokeRect(zoomedPoint.x * width - plotWidth,
                           height1 * (1 - zoomedPoint.y) - plotWidth,
                           doublePlotWidth,
@@ -419,14 +431,6 @@ function main()
       physicalCtx.strokeStyle = lineColor
       physicalCtx.lineTo(zoomedPoint.x * width, height1 * (1 - zoomedPoint.y))
       physicalCtx.stroke()
-      if (isCurrent && rowIndex != -1)
-      {
-        //Write Point id
-        physicalCtx.fillStyle = "rgb(0, 0, 0)"
-        physicalCtx.font="15px Courier New"
-        pointString = "P(" + i.toString() + "," + rowIndex.toString() + ")"
-        physicalCtx.fillText(pointString, width * zoomedPoint.x + 10, height1 * ( 1- zoomedPoint.y))
-      }
     }
   }
 
@@ -569,18 +573,37 @@ function main()
       return
     }
     //Draw point on surface
-    drawParameterLine(selectedPointOnParameter.u, false, "rgb(255, 0, 255)")
-    drawParameterLine(selectedPointOnParameter.v, true, "rgb(255, 0, 255)")
-    plotCurveOnSurface(surfaces[currentSurfaceId], selectedPointOnParameter.u, true, "rgb(255, 0, 255)");
-    plotCurveOnSurface(surfaces[currentSurfaceId], selectedPointOnParameter.v, false, "rgb(255, 0, 255)");
+    drawParameterLine(selectedPointOnParameter.u, false, SELECTED_POINT_COLOR)
+    drawParameterLine(selectedPointOnParameter.v, true, SELECTED_POINT_COLOR)
+    plotCurveOnSurface(surfaces[currentSurfaceId], selectedPointOnParameter.u, true, SELECTED_POINT_COLOR)
+    plotCurveOnSurface(surfaces[currentSurfaceId], selectedPointOnParameter.v, false, SELECTED_POINT_COLOR)
   }
 
-  function drawSurfaceControls(surface, lineColor, dotColor, isCurrent)
+  function writeLettersOnPhysicalPoints()
+  {
+    points =[[zoomPoint(true, surfaces[0].points[0][0]), "\u0303\u03BB'", -5, 20],
+             [zoomPoint(true, surfaces[1].points[0][0]), "\u0303\u03B3'", -5, 20],
+             [zoomPoint(true, surfaces[1].points[0].slice(-1)[0]), "\u0303\u03C1'", -5, 20],
+             [zoomPoint(true, surfaces[0].points.slice(-1)[0][0]),  "\u0303\u03BB", -5, -15],
+             [zoomPoint(true, surfaces[1].points.slice(-1)[0][0]), "\u0303\u03B3", -5, -15],
+             [zoomPoint(true, surfaces[1].points.slice(-1)[0].slice(-1)[0]), "\u0303\u03C1", -5, -15]]
+    //greek letters
+    for (var i = 0; i < points.length; i++)
+    {
+      //Write Point id
+      physicalCtx.fillStyle = TEXT_COLOR
+      physicalCtx.font="bold 20px Courier"
+      pointString = points[i][1]
+      physicalCtx.fillText(pointString, points[i][2] + width * points[i][0].x, points[i][3] + height1 * ( 1 - points[i][0].y))
+    }
+  }
+
+  function drawSurfaceControls(surface, lineColor, pointColor, isCurrent)
   {
 
     for (var i = 0; i < surface.points[0].length; i++)
     {
-      drawPolygon(getColumn(surface.points, i), doublePlotWidth, lineColor, dotColor, isCurrent, -1)
+      drawPolygon(getColumn(surface.points, i), doublePlotWidth, lineColor, pointColor, isCurrent, -1)
     }
     for (var i = 0; i < surface.points.length; i++)
     {
@@ -589,7 +612,7 @@ function main()
       {
         rowIndex = i
       }
-      drawPolygon(surface.points[i], doublePlotWidth, lineColor, dotColor, isCurrent, rowIndex)
+      drawPolygon(surface.points[i], doublePlotWidth, lineColor, pointColor, isCurrent, rowIndex)
     }
   }
 
@@ -601,21 +624,21 @@ function main()
       return
     }
     //disabled colors
-    var lineColor = "rgb(200, 200, 200)"
-    var dotColor = "rgb(100, 100, 100)"
+    var lineColor = NON_CURRENT_SURFACE_LINE_COLOR
+    var pointColor = NON_CURRENT_SURFACE_POINT_COLOR
     if (isCurrent)
     {
       //enabled colors
-      lineColor = "rgb(0, 0, 230)"
-      dotColor = "rgb(0, 0, 200)"
+      lineColor = CURRENT_SURFACE_LINE_COLOR
+      pointColor = CURRENT_SURFACE_POINT_COLOR
     }
 
-    drawSurfaceControls(surface, lineColor, dotColor, isCurrent)
+    drawSurfaceControls(surface, lineColor, pointColor, isCurrent)
     //plot curve
-    var curveColor = "rgb(255, 20, 20)"
+    var curveColor = NON_CURRENT_GRID_CURVE_COLOR
     if (isCurrent)
     {
-      curveColor = "rgb(255, 0, 0)"
+      curveColor = CURRENT_GRID_CURVE_COLOR
     }
     linesInGrid = getLinesAmountInGrid() + 1
     //for (var u = 0; u <= 1; u += 1 / (surface.points.length - 1))
@@ -749,10 +772,10 @@ function main()
       deCasteljauCurveStatus = "On"
     }
     //White background
-    physicalCtx.fillStyle="rgba(255, 255, 255, 0.9)"
+    physicalCtx.fillStyle = TEXT_BACKGROUND_COLOR
     physicalCtx.fillRect(0,1,210,90);
     //text
-    physicalCtx.fillStyle="rgb(0, 0, 0)"
+    physicalCtx.fillStyle = TEXT_COLOR
     physicalCtx.font="15px Courier New"
     physicalCtx.fillText("[+/-] Zoom", 5, 20)
     physicalCtx.fillText("[j] Jacobian: " + jacobianStatus, 5, 35)
@@ -770,10 +793,10 @@ function main()
       return
     }
     //white background
-    parameterCtx.fillStyle="rgba(255, 255, 255, 0.9)"
+    parameterCtx.fillStyle = TEXT_BACKGROUND_COLOR
     parameterCtx.fillRect(0,1,250,70);
     //text
-    parameterCtx.fillStyle="rgb(0, 0, 0)"
+    parameterCtx.fillStyle = TEXT_COLOR
     parameterCtx.font="bold 15px Courier New"
     parameterCtx.fillText("Param: (" + mouseOnParameter.u.toFixed(2) + ", " + mouseOnParameter.v.toFixed(2) +")", 5, 20)
     parameterCtx.fillText("Physi: " + pointToString(physicalMouseCoordinates), 5, 35)
@@ -819,6 +842,10 @@ function main()
         }
         return false
       })
+    }
+    else
+    {
+      writeLettersOnPhysicalPoints()
     }
     drawSurfaces()
     physicalMouseCoordinates = drawMouseOnParameter()
@@ -962,12 +989,12 @@ function main()
       //Draw rows on mesh
       for (var i = 0; i < skeletonPoints[k].length; i++)
       {
-        drawPolygon(skeletonPoints[k][i], plotWidth, lineColor, "rgb(0, 0, 0)", false, -1)
+        drawPolygon(skeletonPoints[k][i], plotWidth, lineColor, SKELETON_POINTS_COLOR, false, -1)
       }
       //Draw columns on mesh
       for (var j = 0; j < skeletonPoints[k][0].length; j++)
       {
-        drawPolygon(getColumn(skeletonPoints[k], j), plotWidth, lineColor, "rgb(0, 0, 0)", false, -1)
+        drawPolygon(getColumn(skeletonPoints[k], j), plotWidth, lineColor, SKELETON_POINTS_COLOR, false, -1)
       }
     }
     return skeletonPoints.pop()[0][0]
@@ -984,8 +1011,8 @@ function main()
     }
 
     //lines over mouse position, parameter space
-    drawParameterLine(mouseOnParameter.u, false, "rgb(0, 255, 0)")
-    drawParameterLine(mouseOnParameter.v, true, "rgb(0, 255, 0)")
+    drawParameterLine(mouseOnParameter.u, false, MOUSE_POSITION_COLOR)
+    drawParameterLine(mouseOnParameter.v, true, MOUSE_POSITION_COLOR)
 
     if (shouldDrawSkeleton)
     {
@@ -996,11 +1023,11 @@ function main()
     else
     {
       //Draw curves
-      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnParameter.u, true, "rgb(0, 255, 0)");
-      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnParameter.v, false, "rgb(0, 255, 0)");
-      //Draw dot
+      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnParameter.u, true, MOUSE_POSITION_COLOR);
+      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnParameter.v, false, MOUSE_POSITION_COLOR);
+      //Draw point
       physicalMouseCoordinates = deCasteljauSurface(surfaces[currentSurfaceId], mouseOnParameter.u, mouseOnParameter.v).pop()[0][0]
-      drawPolygon([physicalMouseCoordinates], plotWidth, "rgb(0, 0, 0)", "rgb(0, 0, 0)", false, -1)
+      drawPolygon([physicalMouseCoordinates], plotWidth, SKELETON_POINTS_COLOR, SKELETON_POINTS_COLOR, false, -1)
     }
     return physicalMouseCoordinates
   }
