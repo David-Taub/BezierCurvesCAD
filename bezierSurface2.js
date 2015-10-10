@@ -1,21 +1,43 @@
+  var defaultSurfaces = [{"name":"1","points":[[{"x":0.14900511379241937,"y":0.20165,"z":1},{"x":0.5810051137924194,"y":0.35645000000000004,"z":1},{"x":0.9180056819915772,"y":0.1552272720336914,"z":1}],[{"x":0.4676051137924194,"y":0.5058499999999999,"z":2},{"x":0.6098051137924194,"y":0.49145,"z":2},{"x":0.7736051137924195,"y":0.49685,"z":2}],[{"x":0.22400568199157714,"y":0.8532272720336914,"z":3},{"x":0.6116051137924194,"y":0.59225,"z":3},{"x":0.9920056819915771,"y":0.8152272720336914,"z":1}]]}]
 $( document ).ready(function()
 {
-  var defaultSurfaces = [{"name":"1","points":[[{"x":0.14900511379241937,"y":0.20165,"z":1},{"x":0.5810051137924194,"y":0.35645000000000004,"z":1},{"x":0.9180056819915772,"y":0.1552272720336914,"z":1}],[{"x":0.4676051137924194,"y":0.5058499999999999,"z":2},{"x":0.6098051137924194,"y":0.49145,"z":2},{"x":0.7736051137924195,"y":0.49685,"z":2}],[{"x":0.22400568199157714,"y":0.8532272720336914,"z":3},{"x":0.6116051137924194,"y":0.59225,"z":3},{"x":0.9920056819915771,"y":0.8152272720336914,"z":1}]]}]
-  main(defaultSurfaces)
+  main()
 
 })
 
-function main(inputSurfaces)
+function main()
 {
   var HISTORY_MAX_SIZE = 50
-  var HIGH_RES_PIX_PER_SAMPLE  = 3
+  var HIGH_RES_PIX_PER_SAMPLE  = 3 //determines the texture resolution
   var LOW_RES_PIX_PER_SAMPLE  = 30
-  var TEXTURE_BLACK_ZERO_THRESHOLD = 0.002
+  var TEXTURE_BLACK_ZERO_THRESHOLD = 0.003 //determines the height lines thinkness 
   var NUMBER_OF_Z_LEVELS = 10
+
+  //colors
+  var HEIGHT_LINE_COLOR               = "rgb(200, 200, 200)"
+  var CURRENT_SURFACE_POINT_COLOR     = "rgb(0, 0, 200)"
+  var CURRENT_SURFACE_LINE_COLOR      = "rgb(0, 0, 230)"
+  var NON_CURRENT_SURFACE_POINT_COLOR = "rgb(200, 200, 200)"
+  var NON_CURRENT_SURFACE_LINE_COLOR  = "rgb(200, 200, 200)"
+  var CURRENT_GRID_CURVE_COLOR        = "rgb(255, 0, 0)"
+  var NON_CURRENT_GRID_CURVE_COLOR    = "rgb(255, 20, 20)"
+  var TEXT_COLOR                      = "rgb(0, 0, 0)"
+  var TEXT_BACKGROUND_COLOR           = "rgba(255, 255, 255, 0.9)"
+  var SELECTED_POINT_COLOR            = "rgb(255, 0, 255)"
+  var SKELETON_POINTS_COLOR           = "rgb(0, 0, 0)"
+  var MOUSE_POSITION_COLOR            = "rgb(0, 255, 0)"
   var currentlyDrawingTexture = false
-  var textureData = []
+
+  //texture data cache for surfaces (assumed NUMBER_OF_SURFACES = 2)
+  var textureData = [[], []]
+
+  //default drawn texture
   var shouldDrawJacobian = false
   var shouldDrawDepth = true
+
+  //the file we work on
+  var currentFileName = "surfaces.json"
+
   var lastDrawTimestamp = (new Date).getTime()
   var lastLowResDrawn = 0
   var history = [], forwardHistory = []
@@ -28,13 +50,13 @@ function main(inputSurfaces)
   var parameterCanvas, parameterCtx
   var width, height, height1, plotWidth, doublePlotWidth,  dragId = -1
   var zoomDepth = 1
-  var averagePoint = -1
+  var zoomedAveragePoint = -1
   init()
   redraw()
 
   function init()
   {
-    surfaces = inputSurfaces
+    surfaces = defaultSurfaces
     shouldDrawSkeleton = true
 
     updateSurfacesList()
@@ -199,9 +221,13 @@ function main(inputSurfaces)
   //Load surfaces from file which is selected in "browse..." element
   function loadSurfaces(ev)
   {
+
     var file = $("#fileInput")[0].files[0]; // FileList object
     var reader = new FileReader()
-
+    currentFileName = file.name
+    $("#fileName").text(file.name)
+    document.title = "(" + file.name + ") Bezier Surface (planar2)"
+    
     // Closure to capture the file information.
     reader.onload = function(e)
     {
@@ -234,7 +260,7 @@ function main(inputSurfaces)
   //download current surfaces in JSON format
   function saveSurfaces()
   {
-    download("surfaces.json", JSON.stringify(surfaces, null, 2))
+    download(currentFileName, JSON.stringify(surfaces, null, 2))
   }
 
   //Download given text as a file with the given filename
@@ -307,21 +333,6 @@ function main(inputSurfaces)
     }
   }
 
-  function subDivideSurfaceByPoint()
-  {
-    if (selectedPointOnParameter == -1)
-    {
-      return
-    }
-    pushToHistory()
-    surface = surfaces[currentSurfaceId]
-    var newSurfaces = subDivideSurface(surface, selectedPointOnParameter.u, selectedPointOnParameter.v)
-    surfaces = [newSurfaces[0]]
-
-    updateSurfacesList()
-    redraw()
-  }
-
 
 
   function getLinesAmountInGrid()
@@ -338,14 +349,13 @@ function main(inputSurfaces)
     }
     linesInGrid = getLinesAmountInGrid() + 1
 
-    //for (var u = 0; u <= 1; u += 1 / (surfaces[currentSurfaceId].points.length - 1))
     for (var u = 0; u <= linesInGrid; u += 1 )
     {
-      drawParameterLine(u / linesInGrid, true, "rgb(255, 0, 0)");
+      drawParameterLine(u / linesInGrid, true, CURRENT_GRID_CURVE_COLOR);
     }
     for (var v = 0; v <= linesInGrid; v += 1)
     {
-      drawParameterLine(v / linesInGrid, false, "rgb(255, 0, 0)");
+      drawParameterLine(v / linesInGrid, false, CURRENT_GRID_CURVE_COLOR);
     }
   }
 
@@ -367,10 +377,10 @@ function main(inputSurfaces)
     parameterCtx.stroke()
   }
 
-  //Add to canvas lines and dots of given polygon
-  // (polygon is open, last and first dots are not drawn)
+  //Add to canvas lines and points of given polygon
+  // (polygon is open, last and first points are not drawn)
   // used to draw the control polygon and the DeCasteljau skeleton
-  function drawPolygon(polygonPoints, lineWidth, lineColor, dotColor, isCurrent, rowIndex)
+  function drawPolygon(polygonPoints, lineWidth, lineColor, pointColor, isCurrent, rowIndex)
   {
     physicalCtx.lineWidth = lineWidth
     physicalCtx.beginPath()
@@ -379,8 +389,8 @@ function main(inputSurfaces)
     for (var i = 0; i < polygonPoints.length; i++)
     {
       zoomedPoint = zoomPoint(true, polygonPoints[i])
-      //Dot
-      physicalCtx.strokeStyle = dotColor
+      //Point
+      physicalCtx.strokeStyle = pointColor
       physicalCtx.strokeRect(zoomedPoint.x * width - plotWidth,
                           height1 * (1 - zoomedPoint.y) - plotWidth,
                           doublePlotWidth,
@@ -393,7 +403,7 @@ function main(inputSurfaces)
       if (isCurrent && rowIndex != -1)
       {
         //Write Point id
-        physicalCtx.fillStyle = "rgb(0, 0, 0)"
+        physicalCtx.fillStyle = TEXT_COLOR
         physicalCtx.font="15px Courier New"
         pointString = "P(" + i.toString() + "," + rowIndex.toString() + ")"
         physicalCtx.fillText(pointString, width * zoomedPoint.x + 10, height1 * ( 1- zoomedPoint.y))
@@ -464,7 +474,7 @@ function main(inputSurfaces)
       */
       if (blackFunc(val, max, min))
       {
-        color = "rgb(0, 0, 0)"
+        color = HEIGHT_LINE_COLOR
       }
       else
       {
@@ -527,18 +537,18 @@ function main(inputSurfaces)
       return
     }
     //Draw point on surface
-    drawParameterLine(selectedPointOnParameter.u, false, "rgb(255, 0, 255)")
-    drawParameterLine(selectedPointOnParameter.v, true, "rgb(255, 0, 255)")
-    plotCurveOnSurface(surfaces[currentSurfaceId], selectedPointOnParameter.u, true, "rgb(255, 0, 255)");
-    plotCurveOnSurface(surfaces[currentSurfaceId], selectedPointOnParameter.v, false, "rgb(255, 0, 255)");
+    drawParameterLine(selectedPointOnParameter.u, false, SELECTED_POINT_COLOR)
+    drawParameterLine(selectedPointOnParameter.v, true, SELECTED_POINT_COLOR)
+    plotCurveOnSurface(surfaces[currentSurfaceId], selectedPointOnParameter.u, true, SELECTED_POINT_COLOR)
+    plotCurveOnSurface(surfaces[currentSurfaceId], selectedPointOnParameter.v, false, SELECTED_POINT_COLOR)
   }
 
-  function drawSurfaceControls(surface, lineColor, dotColor, isCurrent)
+  function drawSurfaceControls(surface, lineColor, pointColor, isCurrent)
   {
 
     for (var i = 0; i < surface.points[0].length; i++)
     {
-      drawPolygon(getColumn(surface.points, i), doublePlotWidth, lineColor, dotColor, isCurrent, -1)
+      drawPolygon(getColumn(surface.points, i), doublePlotWidth, lineColor, pointColor, isCurrent, -1)
     }
     for (var i = 0; i < surface.points.length; i++)
     {
@@ -547,7 +557,7 @@ function main(inputSurfaces)
       {
         rowIndex = i
       }
-      drawPolygon(surface.points[i], doublePlotWidth, lineColor, dotColor, isCurrent, rowIndex)
+      drawPolygon(surface.points[i], doublePlotWidth, lineColor, pointColor, isCurrent, rowIndex)
     }
   }
 
@@ -559,21 +569,21 @@ function main(inputSurfaces)
       return
     }
     //disabled colors
-    var lineColor = "rgb(200, 200, 200)"
-    var dotColor = "rgb(100, 100, 100)"
+    var lineColor = NON_CURRENT_SURFACE_LINE_COLOR
+    var pointColor = NON_CURRENT_SURFACE_POINT_COLOR
     if (isCurrent)
     {
       //enabled colors
-      lineColor = "rgb(0, 0, 230)"
-      dotColor = "rgb(0, 0, 200)"
+      lineColor = CURRENT_SURFACE_LINE_COLOR
+      pointColor = CURRENT_SURFACE_POINT_COLOR
     }
 
-    drawSurfaceControls(surface, lineColor, dotColor, isCurrent)
+    drawSurfaceControls(surface, lineColor, pointColor, isCurrent)
     //plot curve
-    var curveColor = "rgb(255, 20, 20)"
+    var curveColor = NON_CURRENT_GRID_CURVE_COLOR
     if (isCurrent)
     {
-      curveColor = "rgb(255, 0, 0)"
+      curveColor = CURRENT_GRID_CURVE_COLOR
     }
     linesInGrid = getLinesAmountInGrid() + 1
     //for (var u = 0; u <= 1; u += 1 / (surface.points.length - 1))
@@ -636,7 +646,7 @@ function main(inputSurfaces)
     return newSurface
   }
 
-  function getAveragePoint()
+  function getzoomedAveragePoint()
   {
     amount = 0
     sumPoint = {x : 0.0, y: 0.0, z:0.0}
@@ -669,7 +679,7 @@ function main(inputSurfaces)
   {
     pointCopy = $.extend(true, {}, point)
     //center of screen, the camera is static
-    diff = sub(averagePoint, {x: 0.5, y:0.5, z:0.5})
+    diff = sub(zoomedAveragePoint, {x: 0.5, y:0.5, z:0.5})
     //strech
     if (zoomIn)
     {
@@ -678,8 +688,9 @@ function main(inputSurfaces)
     }
     else
     {
-      pointCopy = mul(pointCopy, 1.0 / zoomDepth)
       pointCopy = add(pointCopy, diff)
+      pointCopy = mul(pointCopy, 1.0 / zoomDepth)
+      
     }
     return pointCopy
   }
@@ -707,10 +718,10 @@ function main(inputSurfaces)
       deCasteljauCurveStatus = "On"
     }
     //White background
-    physicalCtx.fillStyle="rgba(255, 255, 255, 0.9)"
-    physicalCtx.fillRect(0,1,200,85);
+    physicalCtx.fillStyle = TEXT_BACKGROUND_COLOR
+    physicalCtx.fillRect(0,1,210,90);
     //text
-    physicalCtx.fillStyle="rgb(0, 0, 0)"
+    physicalCtx.fillStyle = TEXT_COLOR
     physicalCtx.font="15px Courier New"
     physicalCtx.fillText("[+/-] Zoom", 5, 20)
     physicalCtx.fillText("[j] Jacobian: " + jacobianStatus, 5, 35)
@@ -727,10 +738,10 @@ function main(inputSurfaces)
       return
     }
     //white background
-    parameterCtx.fillStyle="rgba(255, 255, 255, 0.9)"
+    parameterCtx.fillStyle = TEXT_BACKGROUND_COLOR
     parameterCtx.fillRect(0,1,250,70);
     //text
-    parameterCtx.fillStyle="rgb(0, 0, 0)"
+    parameterCtx.fillStyle = TEXT_COLOR
     parameterCtx.font="bold 15px Courier New"
     parameterCtx.fillText("Param: (" + mouseOnParameter.u.toFixed(2) + ", " + mouseOnParameter.v.toFixed(2) +")", 5, 20)
     parameterCtx.fillText("Physi: " + pointToString(physicalMouseCoordinates), 5, 35)
@@ -739,17 +750,19 @@ function main(inputSurfaces)
     parameterCtx.fillText("Jacobian: " + jacVal.toFixed(3), 5, 50)
     z = getZ(surfaces[currentSurfaceId], mouseOnParameter.u, mouseOnParameter.v)
   }
-  function makeSurfacesPlaner4()
+  
+  function makeSurfacesPlanar4()
   {
     surfaces = [surfaces[0]]
     makePlanar4(surfaces[0])
     updateSurfacesList()
   }
+  
   function redraw()
   {
-    averagePoint = getAveragePoint()
+    zoomedAveragePoint = getzoomedAveragePoint()
     lastDrawTimestamp = (new Date).getTime()
-    makeSurfacesPlaner4()
+    makeSurfacesPlanar4()
     physicalCtx.clearRect(0,0, width, height)
     parameterCtx.clearRect(0,0, width, height)
     height = physicalCtx.canvas.height
@@ -886,7 +899,10 @@ function main(inputSurfaces)
     writeStatusParameter(deCasteljauSurface(surfaces[currentSurfaceId], mouseOnParameter.u, mouseOnParameter.v).pop()[0][0])
   }
 
-
+  /*
+  Redraw the texture on the parameter space from the cache. The cache contains the last
+  texture calculated in drawTextureRow function
+  */
   function redrawTextureData()
   {
 
@@ -919,12 +935,12 @@ function main(inputSurfaces)
       //Draw rows on mesh
       for (var i = 0; i < skeletonPoints[k].length; i++)
       {
-        drawPolygon(skeletonPoints[k][i], plotWidth, lineColor, "rgb(0, 0, 0)", false, -1)
+        drawPolygon(skeletonPoints[k][i], plotWidth, lineColor, SKELETON_POINTS_COLOR, false, -1)
       }
       //Draw columns on mesh
       for (var j = 0; j < skeletonPoints[k][0].length; j++)
       {
-        drawPolygon(getColumn(skeletonPoints[k], j), plotWidth, lineColor, "rgb(0, 0, 0)", false, -1)
+        drawPolygon(getColumn(skeletonPoints[k], j), plotWidth, lineColor, SKELETON_POINTS_COLOR, false, -1)
       }
     }
     return skeletonPoints.pop()[0][0]
@@ -941,7 +957,7 @@ function main(inputSurfaces)
     }
 
     //lines over mouse position, parameter space
-    drawParameterLine(mouseOnParameter.u, false, "rgb(0, 255, 0)")
+    drawParameterLine(mouseOnParameter.u, false, MOUSE_POSITION_COLOR)
     drawParameterLine(mouseOnParameter.v, true, "rgb(0, 255, 0)")
 
     if (shouldDrawSkeleton)
@@ -953,11 +969,11 @@ function main(inputSurfaces)
     else
     {
       //Draw curves
-      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnParameter.u, true, "rgb(0, 255, 0)");
-      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnParameter.v, false, "rgb(0, 255, 0)");
-      //Draw dot
+      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnParameter.u, true, MOUSE_POSITION_COLOR);
+      plotCurveOnSurface(surfaces[currentSurfaceId], mouseOnParameter.v, false, MOUSE_POSITION_COLOR);
+      //Draw point
       physicalMouseCoordinates = deCasteljauSurface(surfaces[currentSurfaceId], mouseOnParameter.u, mouseOnParameter.v).pop()[0][0]
-      drawPolygon([physicalMouseCoordinates], plotWidth, "rgb(0, 0, 0)", "rgb(0, 0, 0)", false, -1)
+      drawPolygon([physicalMouseCoordinates], plotWidth, SKELETON_POINTS_COLOR, SKELETON_POINTS_COLOR, false, -1)
     }
     return physicalMouseCoordinates
   }

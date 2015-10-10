@@ -59,7 +59,7 @@ function main()
   var parameterCanvas, parameterCtx
   var width, height, height1, plotWidth, doublePlotWidth,  dragId = -1
   var zoomDepth = 1
-  var averagePoint = -1
+  var zoomedAveragePoint = -1
   init()
   redraw()
 
@@ -701,7 +701,7 @@ function main()
     return newSurface
   }
 
-  function getAveragePoint()
+  function getzoomedAveragePoint()
   {
     amount = 0
     sumPoint = {x : 0.0, y: 0.0, z:0.0}
@@ -734,7 +734,7 @@ function main()
   {
     pointCopy = $.extend(true, {}, point)
     //center of screen, the camera is static
-    diff = sub(averagePoint, {x: 0.5, y:0.5, z:0.5})
+    diff = sub(zoomedAveragePoint, {x: 0.5, y:0.5, z:0.5})
     //strech
     if (zoomIn)
     {
@@ -743,8 +743,8 @@ function main()
     }
     else
     {
-      pointCopy = mul(pointCopy, 1.0 / zoomDepth)
       pointCopy = add(pointCopy, diff)
+      pointCopy = mul(pointCopy, 1.0 / zoomDepth)
     }
     return pointCopy
   }
@@ -808,7 +808,7 @@ function main()
 
   function redraw()
   {
-    averagePoint = getAveragePoint()
+    zoomedAveragePoint = getzoomedAveragePoint()
     lastDrawTimestamp = (new Date).getTime()
     makeSurfacesPlanar4()
     physicalCtx.clearRect(0,0, width, height)
