@@ -38,7 +38,7 @@ function main()
   var currentlyDrawingTexture = false
 
   //texture data cache for surfaces (assumed NUMBER_OF_SURFACES = 2)
-  var textureData = [[], []]
+  var textureDataCache = [[], []]
 
   //default drawn texture
   var shouldDrawJacobian = false
@@ -242,6 +242,7 @@ function main()
     reader.onload = function(e)
     {
       pushToHistory()
+      textureDataCache = [[],[]]
       surfaces = JSON.parse(reader.result)
       //Support Z less JSON format (old)
       for(k = 0; k < surfaces.length; k++)
@@ -490,7 +491,7 @@ function main()
 
     for (var k =0; k < NUMBER_OF_SURFACES; k++)
     {
-      textureData[k].push([])
+      textureDataCache[k].push([])
       for (var u = 0; u < 1; u += step)
       {
         point = deCasteljauSurface(surfaces[k], u, v).pop()[0][0]
@@ -527,7 +528,7 @@ function main()
           }
           color = shadeToColor(shade)
         }
-        textureData[k][textureData[k].length - 1].push(color)
+        textureDataCache[k][textureDataCache[k].length - 1].push(color)
         physicalCtx.fillStyle = color
         physicalCtx.fillRect(point.x * width, height1 * (1 - point.y), pixelsPerSample * zoomDepth, pixelsPerSample * zoomDepth)
         //Draw only current surface texture on parameter canvas
@@ -553,7 +554,7 @@ function main()
     minMax = findMinMax(LOW_RES_PIX_PER_SAMPLE.toFixed(2) / width, func)
     min = minMax[0]
     max = minMax[1]
-    textureData[currentSurfaceId] = []
+    textureDataCache[currentSurfaceId] = []
     currentlyDrawingTexture = true
     drawTextureRow(0, HIGH_RES_PIX_PER_SAMPLE, lastDrawTimestamp, min, max, func, blackFunc)
   }
@@ -964,11 +965,11 @@ function main()
     {
       return
     }
-    for (var row = 0; row < textureData[currentSurfaceId].length; row++)
+    for (var row = 0; row < textureDataCache[currentSurfaceId].length; row++)
     {
-      for (var column = 0; column < textureData[currentSurfaceId][0].length; column++)
+      for (var column = 0; column < textureDataCache[currentSurfaceId][0].length; column++)
       {
-        parameterCtx.fillStyle = textureData[currentSurfaceId][row][column]
+        parameterCtx.fillStyle = textureDataCache[currentSurfaceId][row][column]
         parameterCtx.fillRect(column * HIGH_RES_PIX_PER_SAMPLE / 2 , height1 - row * HIGH_RES_PIX_PER_SAMPLE / 2, HIGH_RES_PIX_PER_SAMPLE, HIGH_RES_PIX_PER_SAMPLE)
       }
     }
@@ -1139,14 +1140,16 @@ function main()
         points.push([])
         for (var j = 0; j < surfaces[k].columns; j++)
         {
-          wieghts = [(1 - (i / (surfaces[k].rows - 1))) * (1 - (j / (surfaces[k].columns - 1))),
+          //linear combination of corners
+          coefficients = [(1 - (i / (surfaces[k].rows - 1))) * (1 - (j / (surfaces[k].columns - 1))),
                      (i / (surfaces[k].rows - 1)) * (1 - (j / (surfaces[k].columns - 1))),
                       (1 - (i / (surfaces[k].rows - 1))) * (j / (surfaces[k].columns - 1)),
                       (i / (surfaces[k].rows - 1)) * (j / (surfaces[k].columns - 1))]
-          points[i][j] = add(add(mul(surfaces[k].points[0][0], wieghts[0]),
-                                 mul(surfaces[k].points.slice(-1)[0][0], wieghts[1])),
-                             add(mul(surfaces[k].points[0].slice(-1)[0], wieghts[2]), 
-                                 mul(surfaces[k].points.slice(-1)[0].slice(-1)[0], wieghts[3])))
+          points[i][j] = add(add(mul(surfaces[k].points[0][0], coefficients[0]),
+                                 mul(surfaces[k].points.slice(-1)[0][0], coefficients[1])),
+                             add(mul(surfaces[k].points[0].slice(-1)[0], coefficients[2]), 
+                                 mul(surfaces[k].points.slice(-1)[0].slice(-1)[0], coefficients[3])))
+          //Keep Z values
           if (surfaces[k].points.length == surfaces[k].rows &&
               surfaces[k].points[0].length == surfaces[k].columns)
           {
