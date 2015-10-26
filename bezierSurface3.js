@@ -281,10 +281,24 @@ function main()
     reader.readAsText(file)
   }
 
-
+  //For making the JSON file more editable
+  function addPositionToSurfaces()
+  {
+    for (var k=0; k < surfaces.length; k++)
+    {
+      for (var i=0; i < surfaces[k].points.length; i++)
+      {
+        for (var j=0; j < surfaces[k].points[0].length; j++)
+        {
+         surfaces[k].points[i][j].position = "(" + i.toString() + "," + j.toString() + ")"
+        }
+      }
+    }
+  }
   //download current surfaces in JSON format
   function saveSurfaces()
   {
+    addPositionToSurfaces()
     download(currentFileName, JSON.stringify(surfaces, null, 2))
   }
 
