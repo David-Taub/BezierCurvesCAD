@@ -1,5 +1,5 @@
-var defaultSurfaces = [{"name":"1", "rows" : 5, "columns": 5, "points":[[{"x":0.2,"y":0.1,"z":0},{"x":0.6,"y":0.2,"z":0}],[{"x":0.1,"y":0.7,"z":0},{"x":0.6,"y":0.6,"z":0}]]},
-                       {"name":"2", "rows" : 5, "columns": 5, "points":[[{"x":0.3,"y":0.2,"z":0},{"x":0.9,"y":0.2,"z":0}],[{"x":0.60,"y":0.8,"z":0},{"x":0.9,"y":0.8,"z":0}]]}]
+var defaultSurfaces = [{"name":"1", "rows" : 5, "columns": 5, "points":[[{"x":0,"y":0,"z":0},{"x":1,"y":0,"z":0}],[{"x":0,"y":1,"z":0},{"x":2,"y":1,"z":0}]]},
+                       {"name":"2", "rows" : 5, "columns": 5, "points":[[{"x":1,"y":0,"z":0},{"x":1,"y":-1,"z":0}],[{"x":2,"y":1,"z":0},{"x":2,"y":-1,"z":0}]]}]
 $( document ).ready(function()
 {
   
@@ -58,7 +58,7 @@ function main()
   var physicalCanvas, physicalCtx
   var parameterCanvas, parameterCtx
   var width, height, height1, plotWidth, doublePlotWidth,  dragId = -1
-  var zoomDepth = 1
+  var zoomDepth = 0.35
   var zoomedAveragePoint = -1
   init()
   redraw()
@@ -129,6 +129,11 @@ function main()
       y : point.y * scalar,
       z : point.z * scalar
     }
+  }
+
+  function inner(point1, point2)
+  {
+    return point1.x * point2.x + point1.y * point2.y + point1.z * point2.z;
   }
 
   function pointToString(point)
@@ -1217,7 +1222,7 @@ function main()
         }
       }
     }
-
+    console.log("Setting point: " + zValuedPointSurface.toString() + "," + zValuedPointRow.toString() + "," + zValuedPointColumn.toString() + " Z value to 1")
     //set the valued point
     if (zValuedPointSurface > 0 && zValuedPointColumn == 0)
     {
@@ -1240,7 +1245,82 @@ function main()
     }
     attachSurfaces()
     makeSurfacesLinear()
-    //setZValues()
+    smooth()
+  }
+
+  /*
+  Sets surface 0 constant, and changes the column 1 of surface 1 so that the meeting
+  between the surfaces is C1 "smooth".
+  We use the method detailed in Michel Bercovier's paper, and use his symbols as well.
+  */
+  function smooth()
+  {
+    //[[lower left, lower center, lower right], [upper left, upper center, upper right]]
+    corners= [[surfaces[0].points[0][0], surfaces[1].points[0][0], surfaces[1].points[0].slice(-1)[0]],
+              [surfaces[0].points.slice(-1)[0][0], surfaces[1].points.slice(-1)[0][0], surfaces[1].points.slice(-1)[0].slice(-1)[0]]]
+
+    n = surfaces[0].rows - 1
+    //Weight funtion coefficients
+    l = [inner(sub(corners[0][2], corners[0][1]), sub(corners[1][1],corners[0][1])),
+         inner(sub(corners[0][1], corners[1][1]), sub(corners[1][2],corners[1][1]))]
+    c = [inner(sub(corners[0][2], corners[0][1]), sub(corners[0][0],corners[0][1])),
+         0.5 * (inner(sub(corners[0][2], corners[0][1]), sub(corners[1][0],corners[1][1])) - 
+         inner(sub(corners[0][0], corners[0][1]), sub(corners[1][2],corners[1][1]))),
+         -inner(sub(corners[1][0], corners[1][1]), sub(corners[1][2],corners[1][1]))]
+    r = [-inner(sub(corners[1][1], corners[0][1]), sub(corners[0][0],corners[0][1])),
+         -inner(sub(corners[1][0], corners[1][1]), sub(corners[0][1],corners[1][1]))]
+    console.log("l, c, r", l, c, r)
+    //Delta L, Delta C, Delta R, the difference between two points near the meeting column of the patches
+    deltaL = []
+    deltaC = []
+    deltaR = []
+    for (var i = 0; i < n + 1; i++)
+    {
+        deltaL.push(surfaces[1].points[i][0].z - surfaces[0].points[i].slice(-2)[0].z)
+        if (i < n - 1)
+        {
+            deltaC.push(surfaces[1].points[i + 1][0].z -  surfaces[1].points[i][0].z)
+        }
+        else
+        {
+            deltaC.push(0)
+        }
+        /*
+        deltaL and deltaC are constants because surface 0 is constant (not moving in this operation)
+        So the deltaR is the needed delta between the points of column 0 and 1 in surface 1, so the meeting 
+        is to be smooth.
+        )
+        */
+        //deltaR.push(surfaces[1].points[i][1].z  - surfaces[1].points[i][0].z)
+    }
+    console.log("DeltaL, DeltaC", deltaL, deltaC)
+    /*
+    We solve here the n+1 equations, where everything is constant by the surfaces data except the needed
+    deltaR, meaning the new position of points in surface 1. We receive, after setting the constants in the equations,
+    n equations with n variables, where every deltaR[s] is built with deltaR[s-1].
+    */
+    deltaR = [(deltaL[0] * l[0] + deltaC[0] * c[0]) / r[0]]
+    surfaces[1].points[0][1].z += deltaR[0] + surfaces[1].points[0][0].z
+    for (var s = 1; s < n + 1; s++)
+    {
+        value = deltaL[s] * (n + 1 - s) * l[0] + 
+                deltaL[s - 1] * s * l[1] + 
+                deltaR[s - 1] * s * r[1] +
+                deltaC[s] * (n - s) * (n + 1 - s) * c[0] / n +
+                deltaC[s - 1] * 2 * s * (n + 1 - s) * c[1] / n 
+
+        if (s > 1)
+        {
+            value += deltaC[s - 2] * s * (s - 1) * c[2] / n
+        }
+            
+        value /= ((n + 1 - s) * r[0])
+        //here we add to the deltaR the deltaR[s] value (difference of points P(s,1) - P(s,0) in surface 1)
+        deltaR.push(value)
+        
+        //Here we set the point P(s,1) so the difference deltaR[s] is as needed, making the surface smooth
+        surfaces[1].points[s][1].z = deltaR[s] + surfaces[1].points[s][0].z
+    }
   }
 
   //Receive points of control polygon and the t parameter of the Bezier curve function
