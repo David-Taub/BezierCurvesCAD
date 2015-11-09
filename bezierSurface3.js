@@ -1291,15 +1291,18 @@ function main()
         is to be smooth.
         )
         */
-        //deltaR.push(surfaces[1].points[i][1].z  - surfaces[1].points[i][0].z)
+        deltaR.push(surfaces[1].points[i][1].z  - surfaces[1].points[i][0].z)
     }
     console.log("DeltaL, DeltaC", deltaL, deltaC)
+    console.log("current, non smooth deltaR", deltaR)
     /*
     We solve here the n+1 equations, where everything is constant by the surfaces data except the needed
     deltaR, meaning the new position of points in surface 1. We receive, after setting the constants in the equations,
     n equations with n variables, where every deltaR[s] is built with deltaR[s-1].
     */
     deltaR = [(deltaL[0] * l[0] + deltaC[0] * c[0]) / r[0]]
+    old_z = surfaces[1].points[0][1].z
+    console.log("( 0 , 1) change z value: ",old_z, "->", surfaces[1].points[0][1].z)
     surfaces[1].points[0][1].z += deltaR[0] + surfaces[1].points[0][0].z
     for (var s = 1; s < n + 1; s++)
     {
@@ -1319,8 +1322,12 @@ function main()
         deltaR.push(value)
         
         //Here we set the point P(s,1) so the difference deltaR[s] is as needed, making the surface smooth
+        old_z = surfaces[1].points[s][1].z
         surfaces[1].points[s][1].z = deltaR[s] + surfaces[1].points[s][0].z
+        console.log("(",s, ", 1) change z value: ",old_z, "->", surfaces[1].points[s][1].z)
+
     }
+    console.log("deltaR (after change)", deltaR)
   }
 
   //Receive points of control polygon and the t parameter of the Bezier curve function
