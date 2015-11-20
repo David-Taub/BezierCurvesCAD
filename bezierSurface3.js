@@ -1286,7 +1286,7 @@ function main()
         }
         deltaL = surfaces[1].points[i][0].z - surfaces[0].points[i].slice(-2)[0].z
         deltaR = surfaces[1].points[i][1].z  - surfaces[1].points[i][0].z
-        deltaVector = deltaVector.concat([deltaC, deltaL, deltaR])
+        deltaVector = deltaVector.concat([deltaL, deltaR, deltaC])
     }
     matrix = math.zeros(n + 2, (n + 1) * 3)
     console.log((n + 1) * 3)
