@@ -1,5 +1,12 @@
-var defaultSurfaces = [{"name":"1", "rows" : 5, "columns": 5, "points":[[{"x":0,"y":0,"z":0},{"x":1,"y":0,"z":0}],[{"x":0,"y":1,"z":0},{"x":2,"y":1,"z":0}]]},
-                       {"name":"2", "rows" : 5, "columns": 5, "points":[[{"x":1,"y":0,"z":0},{"x":1,"y":-1,"z":0}],[{"x":2,"y":1,"z":0},{"x":2,"y":-1,"z":0}]]}]
+var defaultSurfaces = [{"name":"1", "rows" : 5, "columns": 5, "points":[[{"x":0.0,"y":0.0,"z":0.0},{"x":1.0,"y":0.0,"z":2.0}],[{"x":0.0,"y":1.0,"z":0.0},{"x":2.0,"y":1.0,"z":0.0}]]},
+                       {"name":"2", "rows" : 5, "columns": 5, "points":[[{"x":1.0,"y":0.0,"z":0.0},{"x":1.0,"y":-1.0,"z":0.0}],[{"x":2.0,"y":1.0,"z":0.0},{"x":2.0,"y":-1.0,"z":0.0}]]}]
+/*var defaultSurfaces = [{"name":"1", "rows" : 3, "columns": 3, "points":[[{"x":0.0,"y":0.0,"z":0.0},{"x":0.5,"y":0.0,"z":0.0},{"x":1.0,"y":0.0,"z":-1.0}],
+                                                                        [{"x":0.0,"y":0.5,"z":0.0},{"x":0.5,"y":0.5,"z":1.0},{"x":1.0,"y":0.5,"z":0.0}],
+                                                                        [{"x":0.0,"y":1.0,"z":1.0},{"x":0.5,"y":3.0,"z":0.0},{"x":1.0,"y":1.0,"z":0.0}]]},
+                       {"name":"2", "rows" : 3, "columns": 3, "points":[[{"x":1.0,"y":0.0,"z":0.0},{"x":2.5,"y":0.0,"z":0.0},{"x":2.0,"y":0.0,"z":-1.0}],
+                                                                        [{"x":1.0,"y":0.5,"z":0.0},{"x":1.5,"y":0.5,"z":-1.0},{"x":2.0,"y":0.5,"z":0.0}],
+                                                                        [{"x":1.0,"y":1.0,"z":0.0},{"x":1.5,"y":1.0,"z":0.0},{"x":2.0,"y":1.0,"z":0.0}]]}]
+*/
 $( document ).ready(function()
 {
   
@@ -66,7 +73,7 @@ function main()
   function init()
   {
     surfaces = defaultSurfaces
-    setZValues()
+    //setZValues()
     shouldDrawSkeleton = true
 
     updateSurfacesList()
@@ -146,7 +153,7 @@ function main()
     mouseOnParameter = -1
     if (shouldDrawJacobian || shouldDrawDepth)
     {
-      redrawTextureData()
+      redrawTextureDataFromCache()
       return
     }
     redraw()
@@ -516,7 +523,6 @@ function main()
         point = deCasteljauSurface(surfaces[k], u, v).pop()[0][0]
         point = zoomPoint(true, point)
         val = func(surfaces[k], u, v)
-
         /*
         Note:
         Here we set a range that will be colored black.
@@ -969,7 +975,7 @@ function main()
     {
       return
     }
-    redrawTextureData()
+    redrawTextureDataFromCache()
     writeStatusParameter(deCasteljauSurface(surfaces[currentSurfaceId], mouseOnParameter.u, mouseOnParameter.v).pop()[0][0])
   }
 
@@ -977,9 +983,8 @@ function main()
   Redraw the texture on the parameter space from the cache. The cache contains the last
   texture calculated in drawTextureRow function
   */
-  function redrawTextureData()
+  function redrawTextureDataFromCache()
   {
-
     if((!shouldDrawJacobian && !shouldDrawDepth) || currentlyDrawingTexture)
     {
       return
@@ -1270,64 +1275,64 @@ function main()
     r = [-inner(sub(corners[1][1], corners[0][1]), sub(corners[0][0],corners[0][1])),
          -inner(sub(corners[1][0], corners[1][1]), sub(corners[0][1],corners[1][1]))]
     console.log("l, c, r", l, c, r)
+    
     //Delta L, Delta C, Delta R, the difference between two points near the meeting column of the patches
-    deltaL = []
-    deltaC = []
-    deltaR = []
-    for (var i = 0; i < n + 1; i++)
+    deltaVector = []
+    for (var i = 0; i <= n; i++)
     {
-        deltaL.push(surfaces[1].points[i][0].z - surfaces[0].points[i].slice(-2)[0].z)
-        if (i < n - 1)
+        deltaC = 0
+        if (i < n)
         {
-            deltaC.push(surfaces[1].points[i + 1][0].z -  surfaces[1].points[i][0].z)
+            deltaC = surfaces[1].points[i + 1][0].z - surfaces[1].points[i][0].z
         }
-        else
-        {
-            deltaC.push(0)
-        }
-        /*
-        deltaL and deltaC are constants because surface 0 is constant (not moving in this operation)
-        So the deltaR is the needed delta between the points of column 0 and 1 in surface 1, so the meeting 
-        is to be smooth.
-        )
-        */
-        deltaR.push(surfaces[1].points[i][1].z  - surfaces[1].points[i][0].z)
+        deltaL = surfaces[1].points[i][0].z - surfaces[0].points[i].slice(-2)[0].z
+        deltaR = surfaces[1].points[i][1].z  - surfaces[1].points[i][0].z
+        deltaVector = deltaVector.concat([deltaC, deltaL, deltaR])
     }
-    console.log("DeltaL, DeltaC", deltaL, deltaC)
-    console.log("current, non smooth deltaR", deltaR)
-    /*
-    We solve here the n+1 equations, where everything is constant by the surfaces data except the needed
-    deltaR, meaning the new position of points in surface 1. We receive, after setting the constants in the equations,
-    n equations with n variables, where every deltaR[s] is built with deltaR[s-1].
-    */
-    deltaR = [(deltaL[0] * l[0] + deltaC[0] * c[0]) / r[0]]
+    
     old_z = surfaces[1].points[0][1].z
     console.log("( 0 , 1) change z value: ",old_z, "->", surfaces[1].points[0][1].z)
-    surfaces[1].points[0][1].z += deltaR[0] + surfaces[1].points[0][0].z
-    for (var s = 1; s < n + 1; s++)
+    matrix = math.zeros(n + 2, (n + 1) * 3)
+    
+    //columns dL dC dR ...
+    for (var s = 0; s <= n; s++)
     {
-        value = deltaL[s] * (n + 1 - s) * l[0] + 
-                deltaL[s - 1] * s * l[1] + 
-                deltaR[s - 1] * s * r[1] +
-                deltaC[s] * (n - s) * (n + 1 - s) * c[0] / n +
-                deltaC[s - 1] * 2 * s * (n + 1 - s) * c[1] / n 
+        colPos = ((s - 1) * 3) - 1
+        newVals =
+          [s * (s - 1) * c[2] / n,          //dC_s-2
+          s * l[1],                         //dL_s-1
+          s * r[1],                         //dR_s-1
+          2 * s * (n + 1 - s) * c[1] / n,   //dC_s-1
+          (n + 1 - s) * l[0],               //dL_s
+          (n + 1 - s) * r[0],               //dR_s
+          (n - s) * (n + 1 - s) * c[0] / n] //dC_s
 
-        if (s > 1)
+        if(s == 1)
         {
-            value += deltaC[s - 2] * s * (s - 1) * c[2] / n
+          newVals = newVals.slice(1, 7)
+          colPos += 1
         }
-            
-        value /= ((n + 1 - s) * r[0])
-        //here we add to the deltaR the deltaR[s] value (difference of points P(s,1) - P(s,0) in surface 1)
-        deltaR.push(value)
-        
-        //Here we set the point P(s,1) so the difference deltaR[s] is as needed, making the surface smooth
-        old_z = surfaces[1].points[s][1].z
-        surfaces[1].points[s][1].z = deltaR[s] + surfaces[1].points[s][0].z
-        console.log("(",s, ", 1) change z value: ",old_z, "->", surfaces[1].points[s][1].z)
+        if(s == 0)
+        {
+          newVals = newVals.slice(4, 7)
+          colPos += 4
+        }
 
+        matrix.subset(math.index(s, math.range(colPos, colPos + newVals.length)), newVals)
     }
-    console.log("deltaR (after change)", deltaR)
+    resultVector = math.multiply(matrix, deltaVector)
+    console.log("deltas (C, L, R, C, ...) :", deltaVector)
+    console.log("A", matrix.toString())
+    console.log("A * deltas", resultVector.toString())
+  }
+
+  function contour()
+  {
+    var data = [[0, 1, 0], [1, 2, 1], [0, 1, 0]];
+    var c = new Conrec();
+    c.contour(data, 0, 2, 0, 2, [1, 2, 3], [1, 2, 3], 3, [0, 1, 2]);
+    console.log(c.contours)
+    console.log(c.contourList)
   }
 
   //Receive points of control polygon and the t parameter of the Bezier curve function
