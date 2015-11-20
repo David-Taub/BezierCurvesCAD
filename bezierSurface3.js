@@ -1287,13 +1287,11 @@ function main()
         deltaL = surfaces[1].points[i][0].z - surfaces[0].points[i].slice(-2)[0].z
         deltaR = surfaces[1].points[i][1].z  - surfaces[1].points[i][0].z
         deltaVector = deltaVector.concat([deltaC, deltaL, deltaR])
-        console.log(surfaces[1].points[i][0].z - surfaces[0].points[i].slice(-2)[0].z)
     }
-    
     matrix = math.zeros(n + 2, (n + 1) * 3)
-    
+    console.log((n + 1) * 3)
     //columns dL dC dR ...
-    for (var s = 0; s <= n; s++)
+    for (var s = 0; s < n + 2; s++)
     {
         colPos = ((s - 1) * 3) - 1
         newVals =
@@ -1315,7 +1313,11 @@ function main()
           newVals = newVals.slice(4, 7)
           colPos += 4
         }
-
+        if (s == n + 1)
+        {
+          newVals = newVals.slice(0, 4)
+        }
+        console.log(colPos, s, newVals)
         matrix.subset(math.index(s, math.range(colPos, colPos + newVals.length)), newVals)
     }
     resultVector = math.multiply(matrix, deltaVector)
@@ -1324,19 +1326,21 @@ function main()
     $("#matrix").text("")
     $("#deltaVector").text("")
     $("#resultVector").text("")
-    for (var s = 0; s <= n+ 1; s++)
+    for (var s = 0; s < n + 2; s++)
     {
-      matrixRow = matrix.subset(math.index(s, math.range(0, n * 3))).toArray()
+      matrixRow = matrix.subset(math.index(s, math.range(0, (n + 1) * 3))).toArray()
       matrixRowFixed = ""
       for (var i = 0; i < matrixRow[0].length; i++)
       {
         matrixRowFixed += parseFloat(matrixRow[0][i]).toFixed(2) + ", "
       }
       $("#matrix").append(matrixRowFixed + "<br/>")
-      $("#deltaVector").append(String.format("{0}<br/>", deltaVector[s].toFixed(2)))
-      $("#resultVector").append(String.format("{0}<br/>", resultVector.toArray()[s].toFixed(2)))
+      $("#resultVector").append(String.format("{0}  ", resultVector.toArray()[s].toFixed(2)))
     }
-    console.log("deltas (C, L, R, C, ...) :", deltaVector)
+    for (var s = 0; s < (n + 1) * 3; s++)
+    {
+      $("#deltaVector").append(String.format("{0}  ", deltaVector[s].toFixed(2)))
+    }
   }
 
   function contour()
