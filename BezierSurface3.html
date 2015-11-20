@@ -12,10 +12,23 @@
 	<body>
 		<h1>Bézier Surface (planar2)</h1>
 
-		<h2 id="fileName"></h2>
-		<canvas id="physicalCanvas" width = 500 height = 500 style="border:1px solid #000000;"></canvas>
-		<canvas id="parameterCanvas" width = 500 height = 500 style="border:1px solid #000000;"></canvas>
 		<table>
+			<tr>
+				<td>
+					<h2 id="fileName"></h2>
+					<canvas id="physicalCanvas" width = 500 height = 500 style="border:1px solid #000000;"></canvas>
+					<canvas id="parameterCanvas" width = 500 height = 500 style="border:1px solid #000000;"></canvas>
+				</td>
+				<td>
+					<h2>Matrix</h2>
+					<h2 id="matrix"></h2>
+					<h2>Delta Vector</h2>
+					<h2 id="deltaVector" style="display: inline;clear:none;"></h2>
+					<h2>Result (zeros = smooth)</h2>
+					<h2 id="resultVector" style="display: inline;clear:none;"></h2>
+		
+				<td/>
+			<tr/>
 			<tr>
 				<td>
 				<select id = "surfacesList" size = "5" required="True" style="width: 500px;"/>

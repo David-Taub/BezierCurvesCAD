@@ -1229,7 +1229,6 @@ function main()
         }
       }
     }
-    console.log("Setting point: " + zValuedPointSurface.toString() + "," + zValuedPointRow.toString() + "," + zValuedPointColumn.toString() + " Z value to 1")
     //set the valued point
     if (zValuedPointSurface > 0 && zValuedPointColumn == 0)
     {
@@ -1244,8 +1243,7 @@ function main()
   {
     if (surfaces.length != NUMBER_OF_SURFACES)
     {
-      alert("found {0} surfaces instead of {1}. Loading default surfaces.".format(
-            surfaces.length, NUMBER_OF_SURFACES))
+      alert(String.format("found {0} surfaces instead of {1}. Loading default surfaces.",  surfaces.length, NUMBER_OF_SURFACES))
       surfaces = defaultSurfaces
       //setZValues()
       updateSurfacesList()
@@ -1276,7 +1274,6 @@ function main()
          -inner(sub(corners[1][0], corners[1][1]), sub(corners[1][2],corners[1][1]))]
     r = [-inner(sub(corners[1][1], corners[0][1]), sub(corners[0][0],corners[0][1])),
          -inner(sub(corners[1][0], corners[1][1]), sub(corners[0][1],corners[1][1]))]
-    console.log("l, c, r", l, c, r)
     
     //Delta L, Delta C, Delta R, the difference between two points near the meeting column of the patches
     deltaVector = []
@@ -1290,6 +1287,7 @@ function main()
         deltaL = surfaces[1].points[i][0].z - surfaces[0].points[i].slice(-2)[0].z
         deltaR = surfaces[1].points[i][1].z  - surfaces[1].points[i][0].z
         deltaVector = deltaVector.concat([deltaC, deltaL, deltaR])
+        console.log(surfaces[1].points[i][0].z - surfaces[0].points[i].slice(-2)[0].z)
     }
     
     matrix = math.zeros(n + 2, (n + 1) * 3)
@@ -1321,9 +1319,24 @@ function main()
         matrix.subset(math.index(s, math.range(colPos, colPos + newVals.length)), newVals)
     }
     resultVector = math.multiply(matrix, deltaVector)
+
+    
+    $("#matrix").text("")
+    $("#deltaVector").text("")
+    $("#resultVector").text("")
+    for (var s = 0; s <= n+ 1; s++)
+    {
+      matrixRow = matrix.subset(math.index(s, math.range(0, n * 3))).toArray()
+      matrixRowFixed = ""
+      for (var i = 0; i < matrixRow[0].length; i++)
+      {
+        matrixRowFixed += parseFloat(matrixRow[0][i]).toFixed(2) + ", "
+      }
+      $("#matrix").append(matrixRowFixed + "<br/>")
+      $("#deltaVector").append(String.format("{0}<br/>", deltaVector[s].toFixed(2)))
+      $("#resultVector").append(String.format("{0}<br/>", resultVector.toArray()[s].toFixed(2)))
+    }
     console.log("deltas (C, L, R, C, ...) :", deltaVector)
-    console.log("A", matrix.toString())
-    console.log("A * deltas", resultVector.toString())
   }
 
   function contour()
@@ -1633,3 +1646,11 @@ function main()
     return transposedSurface
   }
 }
+String.format = function() {
+      var s = arguments[0];
+      for (var i = 0; i < arguments.length - 1; i++) {       
+          var reg = new RegExp("\\{" + i + "\\}", "gm");             
+          s = s.replace(reg, arguments[i + 1]);
+      }
+      return s;
+  }
