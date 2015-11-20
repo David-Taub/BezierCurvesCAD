@@ -383,9 +383,11 @@ function main()
         break
       //n
       case 78:
-        advanceZValuedPoint()
-        currentSurfaceId = zValuedPointSurface
-        setZValues()
+        currentSurfaceId += 1
+        if (currentSurfaceId >= NUMBER_OF_SURFACES)
+        {
+          currentSurfaceId = 0
+        }
         redraw()
         break
     }
@@ -1245,7 +1247,7 @@ function main()
       alert("found {0} surfaces instead of {1}. Loading default surfaces.".format(
             surfaces.length, NUMBER_OF_SURFACES))
       surfaces = defaultSurfaces
-      setZValues()
+      //setZValues()
       updateSurfacesList()
     }
     attachSurfaces()
@@ -1290,8 +1292,6 @@ function main()
         deltaVector = deltaVector.concat([deltaC, deltaL, deltaR])
     }
     
-    old_z = surfaces[1].points[0][1].z
-    console.log("( 0 , 1) change z value: ",old_z, "->", surfaces[1].points[0][1].z)
     matrix = math.zeros(n + 2, (n + 1) * 3)
     
     //columns dL dC dR ...
