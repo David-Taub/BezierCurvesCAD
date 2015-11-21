@@ -302,7 +302,7 @@ function main()
       {
         for (var j=0; j < surfaces[k].points[0].length; j++)
         {
-         surfaces[k].points[i][j].position = "(" + i.toString() + "," + j.toString() + ")"
+         surfaces[k].points[i][j].position = "(" + j.toString() + "," + i.toString() + ")"
         }
       }
     }
