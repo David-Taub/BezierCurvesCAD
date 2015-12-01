@@ -138,6 +138,15 @@ function main()
     }
   }
 
+  function xyzToXy0(point)
+  {
+    return {
+      x : point.x,
+      y : point.y,
+      z : 0.0
+    }
+  }
+
   function inner(point1, point2)
   {
     return point1.x * point2.x + point1.y * point2.y + point1.z * point2.z;
@@ -1261,8 +1270,12 @@ function main()
   function smooth()
   {
     //[[lower left, lower center, lower right], [upper left, upper center, upper right]]
-    corners= [[surfaces[0].points[0][0], surfaces[1].points[0][0], surfaces[1].points[0].slice(-1)[0]],
-              [surfaces[0].points.slice(-1)[0][0], surfaces[1].points.slice(-1)[0][0], surfaces[1].points.slice(-1)[0].slice(-1)[0]]]
+    corners= [[xyzToXy0(surfaces[0].points[0][0]), 
+               xyzToXy0(surfaces[1].points[0][0]),
+               xyzToXy0(surfaces[1].points[0].slice(-1)[0])],
+              [xyzToXy0(surfaces[0].points.slice(-1)[0][0]), 
+               xyzToXy0(surfaces[1].points.slice(-1)[0][0]), 
+               xyzToXy0(surfaces[1].points.slice(-1)[0].slice(-1)[0])]]
 
     n = surfaces[0].rows - 1
     //Weight funtion coefficients
@@ -1289,10 +1302,11 @@ function main()
         deltaVector = deltaVector.concat([deltaL, deltaR, deltaC])
     }
     matrix = math.zeros(n + 2, (n + 1) * 3)
-    console.log((n + 1) * 3)
+    
     //columns dL dC dR ...
     for (var s = 0; s < n + 2; s++)
     {
+        
         colPos = ((s - 1) * 3) - 1
         newVals =
           [s * (s - 1) * c[2] / n,          //dC_s-2
@@ -1317,7 +1331,6 @@ function main()
         {
           newVals = newVals.slice(0, 4)
         }
-        console.log(colPos, s, newVals)
         matrix.subset(math.index(s, math.range(colPos, colPos + newVals.length)), newVals)
     }
     resultVector = math.multiply(matrix, deltaVector)
@@ -1348,8 +1361,6 @@ function main()
     var data = [[0, 1, 0], [1, 2, 1], [0, 1, 0]];
     var c = new Conrec();
     c.contour(data, 0, 2, 0, 2, [1, 2, 3], [1, 2, 3], 3, [0, 1, 2]);
-    console.log(c.contours)
-    console.log(c.contourList)
   }
 
   //Receive points of control polygon and the t parameter of the Bezier curve function
