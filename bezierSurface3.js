@@ -335,12 +335,18 @@ function main()
 
   function surfaces2idt()
   {
-    txt = '[OBJECT RP59 \n[SURFACE BSPLINE ' + (surfaces[0].columns * 2).toString() +
+    txt = '[OBJECT MATRICES\n'+
+          '    [OBJECT VIEW_MAT\n'+
+          '  [MATRIX\n'+
+          '    -0.798242     0.284714    -0.530799     0.000000 \n'+
+          '    0.361486    -0.478452    -0.800257     0.000000  \n'+
+          '    -0.481807    -0.830675     0.279000     0.000000  \n'+
+          '    0.073173     0.000000     0.000000     1.000000  \n  ]\n  ]\n]\n\n'+
+          '[OBJECT RP59 \n[SURFACE BSPLINE ' + (surfaces[0].columns * 2).toString() +
             + ' ' + surfaces[0].rows.toString()
             + ' ' + surfaces[0].rows.toString()
             + ' ' + surfaces[0].rows.toString() 
-            + '  E3'
-    txt = txt + '\n'
+            + '  E3\n'
     txt = txt + '[KV '
     for (var k=0; k < surfaces.length; k++)
     {
