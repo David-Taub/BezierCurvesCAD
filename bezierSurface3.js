@@ -335,6 +335,8 @@ function main()
 
   function surfaces2idt()
   {
+    doubleCols = surfaces[0].columns * 2
+    console.log(doubleCols)
     txt = '[OBJECT MATRICES\n'+
           '    [OBJECT VIEW_MAT\n'+
           '  [MATRIX\n'+
@@ -342,13 +344,13 @@ function main()
           '    0.361486    -0.478452    -0.800257     0.000000  \n'+
           '    -0.481807    -0.830675     0.279000     0.000000  \n'+
           '    0.073173     0.000000     0.000000     1.000000  \n  ]\n  ]\n]\n\n'+
-          '[OBJECT RP59 \n[SURFACE BSPLINE ' + (surfaces[0].columns * 2).toString() +
-            + ' ' + surfaces[0].rows.toString()
-            + ' ' + surfaces[0].rows.toString()
-            + ' ' + surfaces[0].rows.toString() 
-            + '  E3\n'
+          '[OBJECT RP59 \n[SURFACE BSPLINE ' + doubleCols.toString() +
+            ' ' + surfaces[0].rows.toString() +
+            ' ' + surfaces[0].rows.toString() +
+            ' ' + surfaces[0].rows.toString() +
+            '  E3\n'
     txt = txt + '[KV '
-    for (var k=0; k < surfaces.length; k++)
+    for (var k=0; k <= surfaces.length; k++)
     {
       for (var i=0; i < surfaces[0].columns; i++)
       {
@@ -364,7 +366,7 @@ function main()
     }
     for (var i=0; i < surfaces[0].columns; i++)
     {
-      txt = txt + '  ' + k.toString()
+      txt = txt + '  ' + surfaces.length.toString()
     }
     txt = txt + ']\n\n'
 
