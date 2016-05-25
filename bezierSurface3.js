@@ -376,7 +376,9 @@ function main()
       {
         for (var j=0; j < surfaces[k].columns; j++)
         {
-          txt = txt + '[' + surfaces[k].points[i][j].x + ' ' + surfaces[k].points[i][j].y + ' 0.0]\n'
+          txt = txt + '[' + surfaces[k].points[i][j].x + ' ' +
+                            surfaces[k].points[i][j].y + ' ' +
+                            surfaces[k].points[i][j].z + ']\n'
         }
       }
       txt = txt + '\n'
