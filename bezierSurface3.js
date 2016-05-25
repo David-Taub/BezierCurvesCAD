@@ -82,7 +82,8 @@ function main()
     parameterCanvas = $("#parameterCanvas").get(0)
     parameterCtx = parameterCanvas.getContext("2d")
     $("#fileInput").change(loadSurfaces)
-    $("#downloadButton").click(saveSurfaces)
+    $("#downloadButtonJSON").click(saveSurfacesJSON)
+    $("#downloadButtonIDT").click(saveSurfacesIDT)
     $("#surfacesList").change(changeCurrentSurface)
     $("#parameterCanvas").mousemove(mouseMoveParameter)
     $("#parameterCanvas").mouseleave(mouseLeave)
@@ -317,11 +318,65 @@ function main()
     }
   }
   //download current surfaces in JSON format
-  function saveSurfaces()
+  function saveSurfacesJSON()
   {
     addPositionToSurfaces()
     download(currentFileName, JSON.stringify(surfaces, null, 2))
   }
+
+
+  function saveSurfacesIDT()
+  {
+    addPositionToSurfaces()
+    idtCurrentFileName = currentFileName.replace('.json', '.idt');
+    download(idtCurrentFileName, surfaces2idt())
+  }
+
+
+  function surfaces2idt()
+  {
+    txt = '[OBJECT RP59 \n[SURFACE BSPLINE ' + (surfaces[0].columns * 2).toString() +
+            + ' ' + surfaces[0].rows.toString()
+            + ' ' + surfaces[0].rows.toString()
+            + ' ' + surfaces[0].rows.toString() 
+            + '  E3'
+    txt = txt + '\n'
+    txt = txt + '[KV '
+    for (var k=0; k < surfaces.length; k++)
+    {
+      for (var i=0; i < surfaces[0].columns; i++)
+      {
+        txt = txt + '  ' + k.toString()
+      }
+    }
+    txt = txt + ']\n'
+
+    txt = txt + '[KV '
+    for (var i=0; i < surfaces[0].columns; i++)
+    {
+      txt = txt + '  0'
+    }
+    for (var i=0; i < surfaces[0].columns; i++)
+    {
+      txt = txt + '  ' + k.toString()
+    }
+    txt = txt + ']\n\n'
+
+    for (var i=0; i < surfaces[0].rows; i++)
+    {
+      for (var k=0; k < surfaces.length; k++)
+      {
+        for (var j=0; j < surfaces[k].columns; j++)
+        {
+          txt = txt + '[' + surfaces[k].points[i][j].x + ' ' + surfaces[k].points[i][j].y + ' 0.0]\n'
+        }
+      }
+      txt = txt + '\n'
+    }
+    txt = txt + ']\n]\n'
+    return txt
+  }
+
 
   //Download given text as a file with the given filename
   function download(filename, text)
